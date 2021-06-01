@@ -8954,13 +8954,13 @@ db.password=youdontknow
 
 
 ```apl
-# mysql 数据源配置
+########################### MySQL Database Config ############################
 spring.datasource.platform=mysql
 
 db.num=1
-db.url.0=jdbc:mysql://11.162.196.16:3306/nacos_devtest?characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true
-db.user=nacos_username
-db.password=nacos_pwd
+db.url.0=jdbc:mysql://192.168.1.166:3306/nacos_config?characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true
+db.user=root
+db.password=Lee193654300_
 ```
 
 
@@ -8971,7 +8971,7 @@ db.password=nacos_pwd
 
 
 
-### 3、Nacos 之Linux集群配置  
+### 3、Nacos 之 Linux 集群配置  
 
 
 
@@ -8980,6 +8980,165 @@ db.password=nacos_pwd
 
 
 ![image-20210530111357286](SpringCloud.assets/image-20210530111357286.png)
+
+
+
+#### 1、思考个问题
+
+
+
+**1、三个 nacos 都是在一台机器上配置、伪集群配置**
+
+
+
+>   之前我们一个 nacos 配置，启动的时候 ：Startup 8848 是以 默认端口 8848 启动的
+>
+>   但是我们现在要在一个 Linux 启动三台 nacos，那我们启动的时候端口怎么指定？如果默认的话肯定会端口占用启动失败，所以这时我们就要改进下方案
+>
+>   我们启动的时候以：startup -p 端口号 来启动
+
+
+
+#### 2、Nacos 配置 mysql 数据源
+
+
+
+1、我们找到 nacos 的安装路径，在 conf 文件夹下有个 application.properties 配置文件
+
+
+
+![image-20210601143605641](SpringCloud.assets/image-20210601143605641.png)
+
+
+
+2、我们先对这个文件做个备份
+
+```apl
+# 复制一份配置文件、后缀名为 init 代表默认初始配置
+cp application.properties application.properties.init
+```
+
+
+
+![image-20210601143804474](SpringCloud.assets/image-20210601143804474.png)
+
+
+
+3、备份之后我们 vim 编辑该文件，增加 nacos 的持久化方式为 mysql
+
+```properties
+########################### MySQL Database Config ############################
+spring.datasource.platform=mysql
+
+db.num=1
+db.url.0=jdbc:mysql://192.168.1.166:3306/nacos_config?characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true
+db.user=root
+db.password=Lee193654300_
+```
+
+![image-20210601144719366](SpringCloud.assets/image-20210601144719366.png)
+
+
+
+#### 3、Linux 服务器上 nacos 集群配置 cluster.conf
+
+
+
+>   我们梳理出来三台 nacos 集群的端口号
+>
+>   端口号：3333、4444、5555，并将这三个端口配置成一组
+
+
+
+1、我们将 conf 下的配置文件 cluster.conf.example 复制出一份
+
+
+
+```apl
+# 复制一份配置文件
+cp cluster.conf.example cluster.conf
+```
+
+如下：
+
+![image-20210601145723639](SpringCloud.assets/image-20210601145723639.png)
+
+
+
+2、我们编辑该文件增加如下内容
+
+
+
+>   单机 IP 不能写成 127.0.0.1，必须是 hostname -I 能识别的 ip
+
+![image-20210601151314806](SpringCloud.assets/image-20210601151314806.png)
+
+
+
+>   将配置文件原有的内容注释掉删除掉都可以
+
+![image-20210601151535358](SpringCloud.assets/image-20210601151535358.png)
+
+
+
+#### 4、编辑 Nacos 的启动脚本 startup.sh
+
+
+
+>   编辑的目的是使它能够增加参数扩展功能、启动时可以指定端口号
+
+
+
+1、单机版和集群模式启动有何区别？
+
+
+
+>   单机版启动如下命令即可启动
+>
+>   ```apl
+>   ./startup.sh
+>   ```
+
+
+
+如果集群模式启动，我们希望可以类似其它软件的 shell 命令，传递不同的端口号启动不同的 nacos 实例
+
+```apl
+# 启动端口号为 3333 的 nacos
+./startup.sh -p 3333
+```
+
+
+
+2、备份一个 startup.sh 脚本
+
+```apl
+cp startup.sh startup.sh.init
+```
+
+![image-20210601152735186](SpringCloud.assets/image-20210601152735186.png)
+
+
+
+3、修改 /nacos/bin 下的 startup.sh 启动脚本
+
+
+
+>   要修改的内容如下：
+
+
+
+![image-20210601153242359](SpringCloud.assets/image-20210601153242359.png)
+
+
+
+>   **新版 nacos - 2.0.1 脚本默认已经支持 p 端口，无需在改**
+
+![image-20210601153355117](SpringCloud.assets/image-20210601153355117.png)
+
+
+
+### 4、Nginx 的配置 (作为负载均衡器)
 
 
 
