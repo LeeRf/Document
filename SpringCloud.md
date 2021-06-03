@@ -8971,7 +8971,7 @@ db.password=Lee193654300_
 
 
 
-### 3、Nacos 之 Linux 集群配置  
+### 3、Nacos 之 Linux 集群配置  (高可用)
 
 
 
@@ -9141,6 +9141,1425 @@ cp startup.sh startup.sh.init
 ### 4、Nginx 的配置 (作为负载均衡器)
 
 
+
+#### 1、修改 nginx 的配置文件
+
+
+
+Nginx 配置文件路径：
+
+```
+/usr/local/nginx/conf
+```
+
+
+
+![image-20210601155824279](SpringCloud.assets/image-20210601155824279.png)
+
+
+
+#### 2、配置完成启动进行测试
+
+
+
+1、截至到此处，1 个 Nginx + 3个 Nacos 注册中心 + 1 个 mysql 配置完成
+
+
+
+2、顺序启动 nginx 、启动 3 台 nacos、启动 mysql 服务
+
+
+
+3、测试通过 nginx 访问 nacos
+
+```apl
+http://192.168.1.166:1111/nacos/#/login
+```
+
+
+
+出现以下界面代表成功
+
+![image-20210601160625026](SpringCloud.assets/image-20210601160625026.png)
+
+
+
+4、我们的微服务项目的 yml 配置改成 nginx 代理的 ip
+
+
+
+![image-20210601160908046](SpringCloud.assets/image-20210601160908046.png)
+
+
+
+5、启动服务提供者，然后查看 nacos 的服务注册中心
+
+
+
+>   看到如下内容证明OK
+
+![image-20210601161020983](SpringCloud.assets/image-20210601161020983.png)
+
+
+
+### 5、nacos 集群配置高可用总结
+
+
+
+#### 1、一个图总结
+
+![image-20210601161223182](SpringCloud.assets/image-20210601161223182.png)
+
+
+
+## 36、Sentinel 简介和安装
+
+
+
+### 1、Sentinel 是什么？
+
+
+
+>   alibaba Sentinel Git Hub 官方中文文档：https://github.com/alibaba/Sentinel/wiki/%E4%BB%8B%E7%BB%8D
+>
+>   Spring Cloud Sentinel 官网：https://spring-cloud-alibaba-group.github.io/github-pages/greenwich/spring-cloud-alibaba.html#%20spring%20cloud_alibaba%20sentinel
+
+
+
+随着微服务的流行，服务和服务之间的稳定性变得越来越重要。Sentinel 以流量为切入点，从流量控制、熔断降级、系统负载保护等多个维度保护服务的稳定性。
+
+Sentinel 具有以下特征:
+
+-   **丰富的应用场景**：Sentinel 承接了阿里巴巴近 10 年的双十一大促流量的核心场景，例如秒杀（即突发流量控制在系统容量可以承受的范围）、消息削峰填谷、集群流量控制、实时熔断下游不可用应用等。
+-   **完备的实时监控**：Sentinel 同时提供实时的监控功能。您可以在控制台中看到接入应用的单台机器秒级数据，甚至 500 台以下规模的集群的汇总运行情况。
+-   **广泛的开源生态**：Sentinel 提供开箱即用的与其它开源框架/库的整合模块，例如与 Spring Cloud、Dubbo、gRPC 的整合。您只需要引入相应的依赖并进行简单的配置即可快速地接入 Sentinel。
+-   **完善的 SPI 扩展点**：Sentinel 提供简单易用、完善的 SPI 扩展接口。您可以通过实现扩展接口来快速地定制逻辑。例如定制规则管理、适配动态数据源等。
+
+
+
+Sentinel 主要特性：
+
+![image-20210601162117883](SpringCloud.assets/image-20210601162117883.png)
+
+
+
+Sentinel 分为两个部分:
+
+-   核心库（Java 客户端）不依赖任何框架/库，能够运行于所有 Java 运行时环境，同时对 Dubbo / Spring Cloud 等框架也有较好的支持。
+-   控制台（Dashboard）基于 Spring Boot 开发，打包后可以直接运行，不需要额外的 Tomcat 等应用容器。
+
+
+
+### 2、Sentinel 和 Hystrix 的对比
+
+
+
+![image-20210601162758649](SpringCloud.assets/image-20210601162758649.png)
+
+
+
+>   Sentinel：遵循 约定 > 配置 > 编码
+>
+>   都可以写在代码里面配置，但是我们本次还是大规模学习使用配置和注解的方式，尽量少写代码
+
+
+
+### 3、Sentinel 的工作原理
+
+
+
+#### 1、Overview
+
+在 Sentinel 里面，所有的资源都对应一个资源名称（`resourceName`），每次资源调用都会创建一个 `Entry` 对象。Entry 可以通过对主流框架的适配自动创建，也可以通过注解的方式或调用 `SphU` API 显式创建。Entry 创建的时候，同时也会创建一系列功能插槽（slot chain），这些插槽有不同的职责，例如:
+
+-   `NodeSelectorSlot` 负责收集资源的路径，并将这些资源的调用路径，以树状结构存储起来，用于根据调用路径来限流降级；
+-   `ClusterBuilderSlot` 则用于存储资源的统计信息以及调用者信息，例如该资源的 RT, QPS, thread count 等等，这些信息将用作为多维度限流，降级的依据；
+-   `StatisticSlot` 则用于记录、统计不同纬度的 runtime 指标监控信息；
+-   `FlowSlot` 则用于根据预设的限流规则以及前面 slot 统计的状态，来进行流量控制；
+-   `AuthoritySlot` 则根据配置的黑白名单和调用来源信息，来做黑白名单控制；
+-   `DegradeSlot` 则通过统计信息以及预设的规则，来做熔断降级；
+-   `SystemSlot` 则通过系统的状态，例如 load1 等，来控制总的入口流量；
+
+
+
+总体的框架如下:
+
+![image-20210602112537476](SpringCloud.assets/image-20210602112537476.png)
+
+
+
+Sentinel 将 `ProcessorSlot` 作为 SPI 接口进行扩展（1.7.2 版本以前 `SlotChainBuilder` 作为 SPI），使得 Slot Chain 具备了扩展的能力。您可以自行加入自定义的 slot 并编排 slot 间的顺序，从而可以给 Sentinel 添加自定义的功能。
+
+![image-20210602112557844](SpringCloud.assets/image-20210602112557844.png)
+
+>   下面介绍一下各个 slot 的功能
+
+
+
+#### 2、NodeSelectorSlot
+
+
+
+这个 slot 主要负责收集资源的路径，并将这些资源的调用路径以树状结构存储起来，用于根据调用路径进行流量控制。
+
+```java
+ContextUtil.enter("entrance1", "appA");
+ Entry nodeA = SphU.entry("nodeA");
+ if (nodeA != null) {
+    nodeA.exit();
+ }
+ ContextUtil.exit();
+```
+
+
+
+上述代码通过 `ContextUtil.enter()` 创建了一个名为 `entrance1` 的上下文，同时指定调用发起者为 `appA`；接着通过 `SphU.entry()`请求一个 token，如果该方法顺利执行没有抛 `BlockException`，表明 token 请求成功。
+
+以上代码将在内存中生成以下结构：
+
+```
+ 	     machine-root
+                 /     
+                /
+         EntranceNode1
+              /
+             /   
+      DefaultNode(nodeA)
+```
+
+
+
+注意：每个 `DefaultNode` 由资源 ID 和输入名称来标识。换句话说，一个资源 ID 可以有多个不同入口的 DefaultNode。
+
+```java
+  ContextUtil.enter("entrance1", "appA");
+  Entry nodeA = SphU.entry("nodeA");
+  if (nodeA != null) {
+    nodeA.exit();
+  }
+  ContextUtil.exit();
+
+  ContextUtil.enter("entrance2", "appA");
+  nodeA = SphU.entry("nodeA");
+  if (nodeA != null) {
+    nodeA.exit();
+  }
+  ContextUtil.exit();
+```
+
+
+
+以上代码将在内存中生成以下结构：
+
+```
+                   machine-root
+                   /         \
+                  /           \
+          EntranceNode1   EntranceNode2
+                /               \
+               /                 \
+       DefaultNode(nodeA)   DefaultNode(nodeA)
+```
+
+
+
+上面的结构可以通过调用 `curl http://localhost:8719/tree?type=root` 来显示：
+
+```apl
+EntranceNode: machine-root(t:0 pq:1 bq:0 tq:1 rt:0 prq:1 1mp:0 1mb:0 1mt:0)
+-EntranceNode1: Entrance1(t:0 pq:1 bq:0 tq:1 rt:0 prq:1 1mp:0 1mb:0 1mt:0)
+--nodeA(t:0 pq:1 bq:0 tq:1 rt:0 prq:1 1mp:0 1mb:0 1mt:0)
+-EntranceNode2: Entrance1(t:0 pq:1 bq:0 tq:1 rt:0 prq:1 1mp:0 1mb:0 1mt:0)
+--nodeA(t:0 pq:1 bq:0 tq:1 rt:0 prq:1 1mp:0 1mb:0 1mt:0)
+
+t:threadNum  pq:passQps  bq:blockedQps  tq:totalQps  rt:averageRt  prq: passRequestQps 1mp:1m-passed 1mb:1m-blocked 1mt:1m-total
+
+```
+
+
+
+#### 3、ClusterBuilderSlot
+
+
+
+此插槽用于构建资源的 `ClusterNode` 以及调用来源节点。`ClusterNode` 保持某个资源运行统计信息（响应时间、QPS、block 数目、线程数、异常数等）以及调用来源统计信息列表。调用来源的名称由 `ContextUtil.enter(contextName，origin)` 中的 `origin` 标记。可通过如下命令查看某个资源不同调用者的访问情况：`curl http://localhost:8719/origin?id=caller`：
+
+```
+id: nodeA
+idx origin  threadNum passedQps blockedQps totalQps aRt   1m-passed 1m-blocked 1m-total 
+1   caller1 0         0         0          0        0     0         0          0        
+2   caller2 0         0         0          0        0     0         0          0        
+```
+
+
+
+#### 4、StatisticSlot
+
+`StatisticSlot` 是 Sentinel 的核心功能插槽之一，用于统计实时的调用数据。
+
+-   `clusterNode`：资源唯一标识的 ClusterNode 的实时统计
+-   `origin`：根据来自不同调用者的统计信息
+-   `defaultnode`: 根据入口上下文区分的资源 ID 的 runtime 统计
+-   入口流量的统计
+
+
+
+Sentinel 底层采用高性能的滑动窗口数据结构 `LeapArray` 来统计实时的秒级指标数据，可以很好地支撑写多于读的高并发场景。
+
+![image-20210602112910759](SpringCloud.assets/image-20210602112910759.png)
+
+
+
+#### 5、FlowSlot
+
+
+
+这个 slot 主要根据预设的资源的统计信息，按照固定的次序，依次生效。如果一个资源对应两条或者多条流控规则，则会根据如下次序依次检验，直到全部通过或者有一个规则生效为止:
+
+-   指定应用生效的规则，即针对调用方限流的；
+-   调用方为 other 的规则；
+-   调用方为 default 的规则。
+
+
+
+#### 6、DegradeSlot
+
+
+
+这个 slot 主要针对资源的平均响应时间（RT）以及异常比率，来决定资源是否在接下来的时间被自动熔断掉。
+
+
+
+#### 7、SystemSlot
+
+
+
+这个 slot 会根据对于当前系统的整体情况，对入口资源的调用进行动态调配。其原理是让入口的流量和当前系统的预计容量达到一个动态平衡。
+
+注意系统规则只对入口流量起作用（调用类型为 `EntryType.IN`），对出口流量无效。可通过 `SphU.entry(res, entryType)` 指定调用类型，如果不指定，默认是`EntryType.OUT`。
+
+
+
+
+
+### 4、Sentinel 之 Linux 的安装
+
+
+
+#### 1、安装前的注意事项
+
+
+
+>   Sentinel  GitHub官网下载地址：https://github.com/alibaba/Sentinel/releases
+
+
+
+注意：
+
+-   Java 8 环境 OK
+-   8080 端口不能被占用（注意 Tomcat ，因为两者端口默认端口相同）
+
+
+
+#### 2、详细安装步骤
+
+
+
+1、下载如下文件
+
+![image-20210601194644681](SpringCloud.assets/image-20210601194644681.png)
+
+
+
+>   之后将jar包上传至 /opt/sentinel-1.8.1/ 文件夹下
+>
+>   并在该文件夹下创建 logs 文件夹
+
+![image-20210601200738140](SpringCloud.assets/image-20210601200738140.png)
+
+
+
+2、编写配置文件（暂时不知道配在哪）
+
+```properties
+#spring settings
+spring.http.encoding.force=true
+spring.http.encoding.charset=UTF-8
+spring.http.encoding.enabled=true
+
+#cookie name setting
+server.servlet.session.cookie.name=sentinel_dashboard_cookie
+
+#logging settings
+logging.level.org.springframework.web=INFO
+logging.file=${user.home}/logs/csp/sentinel-dashboard.log
+logging.pattern.file= %d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n
+#logging.pattern.console= %d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n
+
+#auth settings
+auth.filter.exclude-urls=/,/auth/login,/auth/logout,/registry/machine,/version
+auth.filter.exclude-url-suffixes=htm,html,js,css,map,ico,ttf,woff,png
+# If auth.enabled=false, Sentinel console disable login
+auth.username=sentinel
+auth.password=sentinel
+
+# Inject the dashboard version. It's required to enable
+# filtering in pom.xml for this resource file.
+sentinel.dashboard.version=1.8.1
+
+```
+
+
+
+3、在 /etc/rc.d/init.d 目录下编写脚本
+
+
+
+```apl
+#切换目录
+cd /etc/rc.d/init.d
+
+#创建脚本
+vim sentinel
+```
+
+>   脚本内容如下
+
+```shell
+#!/bin/bash
+#
+# chkconfig: 2345 10 90
+# 
+# description:auto_run
+
+#程序名
+RUN_NAME="sentinel-dashboard-1.8.1.jar"
+
+#资源位置
+JAVA_OPTS=/opt/sentinel-1.8.1/sentinel-dashboard-1.8.1.jar
+
+#日志位置
+LOG_DIR=/opt/sentinel-1.8.1/logs/csp
+LOG_FILE=$LOG_DIR/sentinel-dashboard.log
+LOG_OPTS=$LOG_DIR/sentinel_temp.log
+
+#开始方法
+start() {
+        source /etc/profile; nohup java -Xms256M -Xmx512M -XX:PermSize=128M -XX:MaxPermSize=256M -Dcsp.sentinel.log.dir=$LOG_DIR -Dlogging.file=$LOG_FILE -Dserver.port=9100  -Dcsp.sentinel.dashboard.server=127.0.0.1:9100 -Dproject.name=Sentinel基本控制台 -jar $JAVA_OPTS >$LOG_OPTS 2>&1 &
+        echo "$RUN_NAME started success."
+}
+
+#结束方法
+stop() {
+        echo "stopping $RUN_NAME ..."
+        kill -9 `ps -ef|grep $JAVA_OPTS|grep -v grep|grep -v stop|awk '{print $2}'`
+}
+
+case "$1" in
+        start)
+            start
+            ;;
+        stop)
+            stop
+            ;;
+        restart)
+            stop
+            start
+            ;;
+        *)
+                echo "Userage: $0 {start|stop|restart}"
+                exit 1
+esac
+```
+
+
+
+4、设置相关执行权限和配置
+
+```apl
+# 刷新配置
+systemctl daemon-reload
+
+# 授权为可执行文件
+chmod +x sentinel 
+chmod +x /opt/sentinel-1.8.1/sentinel-dashboard-1.8.1.jar
+```
+
+>   以下为可选步骤
+
+```apl
+# 添加至系统服务
+chkconfig --add sentinel
+
+# 开机自启
+chkconfig sentinel on
+
+# 查看服务列表
+chkconfig --list
+```
+
+
+
+5、启动和关闭 Sentinel 相关命令
+
+```apl
+# 启停
+systemctl start|stop|status|restart sentinel
+
+# 查看进程
+ps -ef|grep sentinel
+```
+
+
+
+6、测试访问
+
+```apl
+# 访问地址
+http://Linux IP:9100/
+
+# 默认账户密码
+sentinel  sentinel
+```
+
+>   出现以下界面代表成功
+
+![image-20210601201452065](SpringCloud.assets/image-20210601201452065.png)
+
+
+
+## 37、Sentinel 监控和流量控制
+
+
+
+### 1、Sentinel 初始化监控
+
+
+
+>   启动服务注册中心 Nacos 8848 、启动 Sentinel 9100
+
+
+
+##### 1、新建一个工程
+
+>   cloudalibaba-sentinel-service8401
+
+
+
+##### 2、增加 maven 依赖
+
+```xml
+<dependencies>
+    <!--SpringCloud Alibaba Nacos-->
+    <dependency>
+        <groupId>com.alibaba.cloud</groupId>
+        <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+        <version>2.2.5.RELEASE</version>
+    </dependency>
+
+    <!-- SpringCloud Alibaba Sentinel-datasource-nacos 后续持久化用到 -->
+    <dependency>
+        <groupId>com.alibaba.csp</groupId>
+        <artifactId>sentinel-datasource-nacos</artifactId>
+    </dependency>
+
+    <!--SpringCloud alibaba Sentinel-->
+    <dependency>
+        <groupId>com.alibaba.cloud</groupId>
+        <artifactId>spring-cloud-starter-alibaba-sentinel</artifactId>
+        <version>2.2.5.RELEASE</version>
+    </dependency>
+
+    <!-- openfeign -->
+    <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-starter-openfeign</artifactId>
+    </dependency>
+
+    <!-- 引入自己定义的 api 通用包项目，可以使用 Payment 支付的 Entity -->
+    <dependency>
+        <groupId>org.lee.springcloud</groupId>
+        <artifactId>cloud-api-commons</artifactId>
+        <version>${project.version}</version>
+    </dependency>
+
+    <!--  web 和 actuator 是标配、必须要写  -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+
+    <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <optional>true</optional>
+    </dependency>
+
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-test</artifactId>
+    </dependency>
+</dependencies>
+```
+
+
+
+##### 3、编写 yml 配置文件
+
+```yaml
+server:
+  port: 8401
+
+spring:
+  application:
+    name: cloudalibaba-sentinel-service
+  cloud:
+    nacos:
+      discovery:
+        # 服务注册中心地址
+        server-addr: 192.168.1.166:8848
+    sentinel:
+      transport:
+        # 配置 Sentinel Dashboard 地址
+        dashboard: 192.168.1.166:9100
+        # 默认 8719端口：如果被占用从 8719 开始一次 +1 扫描. 直到找出未被占用的端口
+        port: 8719
+        # sentinel 部署在远程服务器上要加上本机的 ip 监听
+        clientIp: 192.168.1.3
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+```
+
+
+
+##### 4、编写主启动类
+
+```java
+package com.lee.cloudalibaba;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+
+@EnableDiscoveryClient
+@SpringBootApplication
+public class SpringBootSentinelService8401 {
+    public static void main(String[] args) {
+        SpringApplication.run(SpringBootSentinelService8401.class, args);
+    }
+}
+```
+
+
+
+##### 5、编写 Controller
+
+```java
+package com.lee.cloudalibaba.controller;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.UUID;
+
+@RestController
+public class FlowLimitController {
+
+    @Value("${server.port}")
+    private String serverPort;
+
+    @GetMapping("/sentinel/uuid")
+    public String getPayment(){
+        return "Sentinel  => Port：" + serverPort + "  uuid：" + UUID.randomUUID().toString();
+    }
+}
+```
+
+
+
+##### 6、进行测试
+
+
+
+>   查看微服务 8401 是否注册进 Nacos 服务注册中心
+
+![image-20210601224320503](SpringCloud.assets/image-20210601224320503.png)
+
+
+
+>   查看 Sentinel 控制台
+
+![image-20210601224352949](SpringCloud.assets/image-20210601224352949.png)
+
+
+
+>   我们发现 Sentinel 控制台空空如也，因为 Sentinel 采用懒加载机制，我们随便访问一个接口进行测试，Sentinel 才会被加载，之后我们刷新界面
+
+![image-20210601224712900](SpringCloud.assets/image-20210601224712900.png)
+
+
+
+##### 7、踩坑记录
+
+
+
+>   如果 Sentinel 部署在了远程服务器上，要在 yml 中配置 
+>
+>   ```
+>   clientIp: 本机ip
+>   ```
+
+
+
+**远程服务器上的时间需要和本地时间同步，不然监控界面空白**
+
+
+
+可以设置 Linux 系统时间和网络时间同步、如下
+
+```apl
+# CentOS 安装 nptdate 工具
+sudo yum -y install ntp ntpdate 
+```
+
+```apl
+# Ubuntu 安装 nptdate 工具
+sudo apt-get install ntp ntpdate 
+```
+
+```apl
+# 系统时间与网络时间同步
+ntpdate cn.pool.ntp.org
+
+# 统时间写入硬件时间
+hwclock --systohc
+```
+
+
+
+**监控界面有一定延迟，需要等待大概 3 ~ 5秒**
+
+
+
+### 2、Sentinel 流控规则介绍
+
+
+
+-   资源名:唯一名称，默认请求路径
+
+
+-   针对来源: Sentinel可以针对调用者进行限流，填写微服务名，默认default(不区分来源)阈值类型/单机阈值:
+    -   QPS(每秒钟的请求数量)︰当调用该 api 的 QPS 达到阈值的时候，进行限流。
+    -   线程数：当调用该 api 的线程数达到阈值的时候，进行限流
+
+-   是否集群:不需要集群
+-   流控模式:
+    -   直接: api 达到限流条件时，直接限流
+    -   关联: 当关联的资源达到阈值时，就限流自己
+    -   链路: 只记录指定链路上的流量（指定资源从入口资源进来的流量，如果达到阈值，就进行限流)【api级别的针对来源】
+
+-   流控效果:
+
+    -   快速失败: 直接失败，抛异常
+
+    -   Warm Up: （`RuleConstant.CONTROL_BEHAVIOR_WARM_UP`）方式，即预热/冷启动方式。当系统长期处于低水位的情况下，当流量突然增加时，直接把系统拉升到高水位可能瞬间把系统压垮。通过"冷启动"，让通过的流量缓慢增加，在一定时间内逐渐增加到阈值上限，给冷系统一个预热的时间，避免冷系统被压垮，详细文档可以参考 [流量控制 - Warm Up 文档](https://github.com/alibaba/Sentinel/wiki/限流---冷启动)
+
+    -   排队等待: 匀速排队，让请求以匀速的速度通过，对应的是漏桶算法，阈值类型必须设置为 QPS，否则无效，详细文档可以参考 [流量控制 - 匀速器模式](https://github.com/alibaba/Sentinel/wiki/流量控制-匀速排队模式)，具体的例子可以参见 [PaceFlowDemo](https://github.com/alibaba/Sentinel/blob/master/sentinel-demo/sentinel-demo-basic/src/main/java/com/alibaba/csp/sentinel/demo/flow/PaceFlowDemo.java)。
+
+        >   注意：匀速排队模式暂时不支持 QPS > 1000 的场景
+
+
+
+#### 1、流控规则 -> QPS&快速失败
+
+
+
+快速失败 -》 直接失败，抛异常
+
+>   两种方式添加规则（功能都一样）
+>
+>   -   簇点链路
+>   -   流控规则
+
+
+
+操作步骤很简单
+
+
+
+1、如果我们要对 testA 进行流量控制，我们点击流控 + 按钮
+
+![image-20210602114729970](SpringCloud.assets/image-20210602114729970.png)
+
+
+
+2、我们进行如下设置
+
+>   表示 1 秒钟内查询 1 次就是 OK，若超过次数1，就直接 => 快速失败，抛出默认错误
+
+![image-20210602114908756](SpringCloud.assets/image-20210602114908756.png)
+
+
+
+3、设置好后我们可以在流控规则界面看到这个
+
+![image-20210602115029745](SpringCloud.assets/image-20210602115029745.png)
+
+
+
+4、我们访问 testA 接口进行狂点测试
+
+>   我们发现如下界面，Sentinel 直接拒绝掉了请求
+
+![image-20210602115112525](SpringCloud.assets/image-20210602115112525.png)
+
+
+
+**思考：超过流控规则后直接调用默认报错信息，是否应该有我们自己的后续处理，比如友好提示?**
+
+
+
+#### 2、流控模式 -> 线程数
+
+
+
+>   其实很好理解：当调用该 api 的线程数达到阈值的时候，进行限流
+>
+>   我们可以理解 1 个浏览器窗口代表一个线程，假如多个窗口同时访问接口，那么超过了如下我们设置的 阈值 1，就会报错 Blocked by Sentinel (flow limiting)
+
+
+
+如下设置
+
+![image-20210602120323258](SpringCloud.assets/image-20210602120323258.png)
+
+
+
+#### 3、流控模式 -> 关联
+
+
+
+当关联的资源达到阈值时，就限流自己
+
+-   就是当 A 关联的资源 B 达到阈值后，就限流 A 自己
+-   通俗点就是 A 做了 B 的担保人，B 惹事，A 负责
+-   用在业务上就是比如 支付接口 到达了阈值，就从源头限流 下订单接口 的阈值，微服务业务调用就像一个出水口入水口一样
+
+
+
+如下设置
+
+![image-20210602121633838](SpringCloud.assets/image-20210602121633838.png)
+
+
+
+我们可以通过 JMeter 开辟10个线程每秒10个请求进行访问 testB ，随后我们手动浏览器去访问 testA 接口，我们发现该接口处于报错状态
+
+
+
+JMeter压测 testB
+
+![image-20210602122244294](SpringCloud.assets/image-20210602122244294.png)
+
+
+
+
+
+浏览器 访问 testA
+
+![image-20210602122303552](SpringCloud.assets/image-20210602122303552.png)
+
+我们发现在压测 testB 期间访问了很多次 testA 都是拒绝状态
+
+![image-20210602122701156](SpringCloud.assets/image-20210602122701156.png)
+
+
+
+#### 4、流控模式 -> 链路
+
+
+
+只记录指定链路上的流量（指定  **微服务/资源/系统**  从入口资源进来的流量，如果达到阈值，就进行限流)
+
+
+
+>   入口资源：就是树状列表中的根节点
+>
+>   我们将 testA 接口的入口资源设置成为 sentinel_spring_web_context，代表来自该微服务的访问 QPS 达到 3  之后就进行拒绝
+
+![image-20210602130009785](SpringCloud.assets/image-20210602130009785.png)
+
+
+
+狂点之后进行测试：
+
+![image-20210602125722010](SpringCloud.assets/image-20210602125722010.png)
+
+#### 5、流控效果 -> 预热 ( Warm Up )
+
+
+
+阈值 / coldFactor(默认为3)，经过预热时长后才会达到阈值
+
+-   默认 clodFactor 为 3，即请求 OPS 从 threshold / 3 开始，经预热时长逐渐升至设定的 OPS 阈值
+
+
+
+>   通常冷启动的过程系统允许通过的 QPS 曲线如下图所示：
+
+![image-20210602135926898](SpringCloud.assets/image-20210602135926898.png)
+
+
+
+我们如下进行设置
+
+>   案例如下：单机阈值 30、预热时长 5 秒
+>
+>   就是初始时阈值为 12 / 3 = 4 个请求，即阈值刚开始为 4，然后经过了 5 秒后阈值慢慢升高至 12
+
+
+
+![image-20210602140822726](SpringCloud.assets/image-20210602140822726.png)
+
+
+
+设置完成后我们可以狂点 http://localhost:8401/sentinel/testA，我们可以发现前期有部分请求失败，但是大概5秒后很难出现失败了，因为阈值达到了顶峰的 12，预热已经完成，我们手速没那么快
+
+
+
+![image-20210602141208356](SpringCloud.assets/image-20210602141208356.png)
+
+
+
+#### 6、流控效果 -> 排队等待
+
+
+
+匀速排队（`RuleConstant.CONTROL_BEHAVIOR_RATE_LIMITER`）方式会严格控制请求通过的间隔时间，也即是让请求以均匀的速度通过，对应的是漏桶算法。详细文档可以参考 [流量控制 - 匀速器模式](https://github.com/alibaba/Sentinel/wiki/流量控制-匀速排队模式)，具体的例子可以参见 [PaceFlowDemo](https://github.com/alibaba/Sentinel/blob/master/sentinel-demo/sentinel-demo-basic/src/main/java/com/alibaba/csp/sentinel/demo/flow/PaceFlowDemo.java)。
+
+
+
+该方式的作用如下图所示：
+
+![image-20210602141340473](SpringCloud.assets/image-20210602141340473.png)
+
+
+
+这种方式主要用于处理间隔性突发的流量，例如消息队列。想象一下这样的场景，在某一秒有大量的请求到来，而接下来的几秒则处于空闲状态，我们希望系统能够在接下来的空闲期间逐渐处理这些请求，而不是在第一秒直接拒绝多余的请求
+
+
+
+>   注意：匀速排队模式暂时不支持 QPS > 1000 的场景。
+
+
+
+如下设置：
+
+-   单机阈值：1
+-   超时时间：10000 毫秒
+-   testB 接口每秒接收请求1次，超过阈值就排队等待，等待超时时间为 10000 毫秒
+
+![image-20210602141821476](SpringCloud.assets/image-20210602141821476.png)
+
+
+
+## 38、Sentinel 之服务降级
+
+
+
+### 1、服务降级简介
+
+
+
+现代微服务架构都是分布式的，由非常多的服务组成。不同服务之间相互调用，组成复杂的调用链路。以上的问题在链路调用中会产生放大的效果。复杂链路上的某一环不稳定，就可能会层层级联，最终导致整个链路都不可用。因此我们需要对不稳定的**弱依赖服务调用**进行熔断降级，暂时切断不稳定调用，避免局部不稳定因素导致整体的雪崩。熔断降级作为保护自身的手段，通常在客户端（调用端）进行配置
+
+
+
+>   Sentinel 熔断降级会在调用链路中某个资源出现不稳定状态时(例如调用超时或异常比例升高)，对这个资源的调用进行限制,让请求快速失败，避免影响到其它的资源而导致级联错误。
+>
+>   当资源被降级后，在接下来的降级时间窗口之内，对该资源的调用都自动熔断（默认行为是抛DegradeException) 
+
+
+
+![image-20210602153028969](SpringCloud.assets/image-20210602153028969.png)
+
+
+
+### 2、1.8.0 以及以上版本改动
+
+
+
+>   **注意**：**本文档针对 Sentinel 1.8.0 及以上版本**。
+>
+>   1.8.0 版本对熔断降级特性进行了全新的改进升级，请使用最新版本以更好地利用熔断降级的能力。该版本对熔断降级做了大的调整，**可以定义任意时长的熔断时间，引入了半开启恢复支持**
+>
+>   
+>
+>   1、熔断状态：
+>
+>   -   熔断有三种状态，分别为OPEN、HALF_OPEN、CLOSE
+>
+>   ![image-20210602160405324](SpringCloud.assets/image-20210602160405324.png)
+
+
+
+### 3、降级规则界面参数详解
+
+
+
+![image-20210602165957114](SpringCloud.assets/image-20210602165957114.png)
+
+
+
+**熔断降级规则界面（DegradeRule）包含下面几个重要的属性**
+
+|                               |                                                              |            |
+| ----------------------------- | ------------------------------------------------------------ | ---------- |
+| Field                         | 说明                                                         | 默认值     |
+| resource - 资源名             | 即规则的作用对象                                             |            |
+| grade - 熔断策略              | 三种：慢调用比例/异常比例/异常数策略                         | 慢调用比例 |
+| count - 最大 RT               | 平均响应时间 ( 单位 ms )                                     |            |
+| timeWindow - 熔断时长         | 熔断期间不响应请求，直接快速失败 ( 单位为 s )                |            |
+| minRequestAmount - 最小请求数 | 熔断触发的最小请求数，请求数小于该值时即使异常比率超出阈值也不会熔断（1.7.0 引入） | 5          |
+| statIntervalMs - 统计时长     | 如 60*1000 代表分钟级（单位为 ms）（1.8.0 引入）             | 1000 ms    |
+| slowRatioThreshold - 比例阈值 | 慢调用比例阈值，仅慢调用比例模式有效（1.8.0 引入）           |            |
+
+
+
+### 4、熔断策略的介绍和使用
+
+
+
+>   Sentinel 提供以下几种熔断策略：
+
+![image-20210602163655598](SpringCloud.assets/image-20210602163655598.png)
+
+
+
+#### 1、慢调用比例 (`SLOW_REQUEST_RATIO`)：
+
+
+
+##### 1、慢调用比例说明 (官话)
+
+
+
+>   选择以慢调用比例作为阈值，需要设置允许的慢调用 RT（即最大的响应时间），请求的响应时间大于该值则统计为慢调用
+
+当单位统计时长（`statIntervalMs`）内请求数目大于设置的最小请求数目，并且慢调用的比例大于阈值，则接下来的熔断时长内请求会自动被熔断。经过熔断时长后熔断器会进入探测恢复状态（HALF-OPEN 状态），若接下来的一个请求响应时间小于设置的慢调用 RT 则结束熔断，若大于设置的慢调用 RT 则会再次被熔断
+
+
+
+简单来说就是指耗时大于阈值RT的请求称为慢调用，阈值RT由用户设置
+
+![image-20210602161825965](SpringCloud.assets/image-20210602161825965.png)
+
+
+
+##### 2、慢比例执行逻辑
+
+
+
+**熔断（OPEN）：请求数大于最小请求数并且慢调用的比率大于比例阈值则发生熔断**，熔断时长为用户自定义设置。
+
+**探测（HALFOPEN）**：当熔断过了定义的熔断时长，状态由熔断（OPEN）变为探测（HALFOPEN）。
+
+-   如果接下来的一个请求小于最大RT，说明慢调用已经恢复，结束熔断，状态由探测（HALF_OPEN）变更为关闭（CLOSED）
+-   如果接下来的一个请求大于最大RT，说明慢调用未恢复，继续熔断，熔断时长保持一致
+
+
+
+>   注意 Sentinel 默认统计的RT上限是 4900ms，超出此阈值的都会算作 4900ms，若需要变更此上限可以通过启动配置项 -Dcsp.sentinel.statistic.max.rt=xxx 来配置
+
+
+
+##### 3、慢比例模式实战配置
+
+
+
+1、我们对 testFusing 接口做以下降级规则配置
+
+
+
+>   最大RT(平均响应时间)：为 100 ms，单个请求响应时间超过 100 ms 条件成立
+>
+>   比例阈值：为 0.2，10 个请求慢调用 2 个时条件成立
+>
+>   最小请求数：每秒 >= 5 个时条件成立
+>
+>   **统计时长：大白话来讲 => 当 1 秒内，来了大于 5个请求时，而且请求中响应超时 (100ms) 的比例超过 20% , 就会触发服务熔断 时长 5 秒，相对官话好理解了点吧**
+
+
+
+![image-20210602174956130](SpringCloud.assets/image-20210602174956130.png)
+
+
+
+2、话不多说，接下来我们来新增一个 testFusing 接口如下
+
+
+
+>   我们依旧对 cloudalibaba-sentinel-service8401 服务的 Controller 进行添加新接口
+>
+>   改完后记得重启服务
+
+```java
+@GetMapping("/sentinel/testFusing/{sleep}")
+public String testFusing(@PathVariable("sleep") Integer sleepMs) throws InterruptedException {
+    Thread.sleep(sleepMs);
+    String result = "测试熔断 sleepTime(ms) => " + sleepMs +  " => port：" + serverPort + " => uuid：" + UUID.randomUUID().toString();
+    log.info(result);
+    return result;
+}
+```
+
+
+
+3、开始测试，这时还用不上 JMeter，我们访问接口，在浏览器地址栏中一番狂点之后，就会触发服务熔断
+
+
+
+![image-20210602174128293](SpringCloud.assets/image-20210602174128293.png)
+
+>   注意 ：熔断之后 Sentinel 会进行探测
+>
+>   如果接下来的一个请求大于最大RT，说明慢调用未恢复，继续熔断，熔断时长保持一致
+
+
+
+4、我们等待 5 秒后，再次访问以下接口，发现服务正常访问
+
+
+
+![image-20210602175339719](SpringCloud.assets/image-20210602175339719.png)
+
+
+
+#### 2、异常比例 (`ERROR_RATIO`)：
+
+
+
+##### 1、异常比例说明
+
+
+
+当单位统计时长（`statIntervalMs`）内请求数目大于设置的最小请求数目，并且异常的比例大于阈值，则接下来的熔断时长内请求会自动被熔断。经过熔断时长后熔断器会进入探测恢复状态（HALF-OPEN 状态），若接下来的一个请求成功完成（没有错误）则结束熔断，否则会再次被熔断。异常比率的阈值范围是 `[0.0, 1.0]`，代表 0% - 100%
+
+
+
+![image-20210602164543202](SpringCloud.assets/image-20210602164543202.png)
+
+
+
+##### 2、异常比例执行逻辑
+
+
+
+**熔断（OPEN）：当请求数大于最小请求并且异常比例大于设置的阈值时触发熔断**，熔断时长由用户设置。
+
+**探测（HALFOPEN）**：当超过熔断时长时，由熔断（OPEN）转为探测（HALFOPEN）
+
+如果接下来的一个请求未发生错误，说明应用恢复，结束熔断，状态由探测（HALF_OPEN）变更为关闭（CLOSED）
+
+
+
+##### 3、异常比例实战配置
+
+
+
+1、我们对 test Exception 接口做如下的降级配置
+
+
+
+>   **通俗点讲就是当 1 秒内来了超过5个请求，并且其中发生异常的比例为 20%，就会触发服务熔断 时长 5 秒**
+
+![image-20210602181537778](SpringCloud.assets/image-20210602181537778.png)
+
+
+
+2、我们新增一个接口
+
+>   修改微服务 cloudalibaba-sentinel-service8401
+
+
+
+```java
+@GetMapping("/sentinel/testException")
+public String testException(){
+    int result = 10 / 0;
+    return String.valueOf(result);
+}
+```
+
+
+
+3、之后我们进行狂点测试，发现触发了服务熔断，此时后台正在疯狂报错
+
+
+
+![image-20210602182203962](SpringCloud.assets/image-20210602182203962.png)
+
+
+
+```ABAP
+2021-06-02 18:21:47.293 ERROR 51484 --- [nio-8401-exec-5] o.a.c.c.C.[.[.[/].[dispatcherServlet]    : Servlet.service() for servlet [dispatcherServlet] in context with path [] threw exception [Request processing failed; nested exception is java.lang.ArithmeticException: / by zero] with root cause
+
+java.lang.ArithmeticException: / by zero
+	at com.lee.cloudalibaba.controller.FlowLimitController.testException(FlowLimitController.java:49) ~[classes/:na]
+	at sun.reflect.GeneratedMethodAccessor93.invoke(Unknown Source) ~[na:na]
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43) ~[na:1.8.0_271]
+	at java.lang.reflect.Method.invoke(Method.java:498) ~[na:1.8.0_271]
+	at org.springframework.web.method.support.InvocableHandlerMethod.doInvoke(InvocableHandlerMethod.java:190) ~[spring-web-5.2.2.RELEASE.jar:5.2.2.RELEASE]
+	at org.springframework.web.method.support.InvocableHandlerMethod.invokeForRequest(InvocableHandlerMethod.java:138) ~[spring-web-5.2.2.RELEASE.jar:5.2.2.RELEASE]
+	at org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod.invokeAndHandle(ServletInvocableHandlerMethod.java:106) ~[spring-webmvc-5.2.2.RELEASE.jar:5.2.2.RELEASE]
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.invokeHandlerMethod(RequestMappingHandlerAdapter.java:888) ~[spring-webmvc-5.2.2.RELEASE.jar:5.2.2.RELEASE]
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.handleInternal(RequestMappingHandlerAdapter.java:793) ~[spring-webmvc-5.2.2.RELEASE.jar:5.2.2.RELEASE]
+	at org.springframework.web.servlet.mvc.method.AbstractHandlerMethodAdapter.handle(AbstractHandlerMethodAdapter.java:87) ~[spring-webmvc-5.2.2.RELEASE.jar:5.2.2.RELEASE]
+```
+
+
+
+4、耐心等待 5 秒之后，我们在进行测试，发现服务可以正常访问，虽然报错
+
+![image-20210602182358180](SpringCloud.assets/image-20210602182358180.png)
+
+
+
+#### 3、异常数 (`ERROR_COUNT`)：
+
+
+
+##### 1、异常数说明
+
+
+
+当单位统计时长内的异常数目超过阈值之后会自动进行熔断。经过熔断时长后熔断器会进入探测恢复状态（HALF-OPEN 状态），若接下来的一个请求成功完成（没有错误）则结束熔断，否则会再次被熔断
+
+
+
+![image-20210602162115829](SpringCloud.assets/image-20210602162115829.png)
+
+
+
+##### 2、异常数执行逻辑
+
+
+
+**熔断（OPEN）：当请求数大于最小请求并且异常数量大于设置的阈值时触发熔断**，熔断时长由用户设置。
+
+**探测（HALFOPEN）：**当超过熔断时长时，由熔断（OPEN）转为探测（HALFOPEN）
+
+如果接下来的一个请求未发生错误，说明应用恢复，结束熔断，状态由探测（HALF_OPEN）变更为关闭（CLOSED）
+
+如果接下来的一个请求继续发生错误，说明应用未恢复，继续熔断，熔断时长保持一致
+
+
+
+##### 3、异常数实战配置
+
+
+
+1、我们修改 test Exception 接口的降级配置，如下
+
+
+
+>   **通俗点讲就是当 1 秒内来了超过5个请求，并且其中发生异常的数量为 3个，就会触发服务熔断 时长 5 秒**
+
+![image-20210602182648583](SpringCloud.assets/image-20210602182648583.png)
+
+
+
+2、这个其实和异常比例大差不差，只不过一个是 异常的比例，一个是异常的数量，这里不再阐述，有兴趣的可以自行测试
+
+
+
+### 5、服务降级的兜底方法配置
+
+
+
+#### 1、服务降级方法介绍
+
+
+
+兜底方法分为两种，系统默认的客户自定义的两种，之前的 case 限流出问题后，都是用 Sentinel 系统默认的提示：Blocked by Sentinel ( flow limiting )，我们能不能自定义？类似 Hystrix，某个方法出问题了，就去找对应的兜底降级方法？
+
+
+
+结论：从 @HystrixCommand 注解到 @SentinelResource
+
+
+
+#### 2、我们改造我们接口
+
+
+
+1、我们继续在 8401 服务的 Controller 改造 testA 方法
+
+```java
+/**
+ * value : 值可以任意，但是要唯一
+ * blockHandler：绑定服务降级后调用哪个方法
+ */
+@GetMapping("/sentinel/testA")
+@SentinelResource(value = "sentinel/testA", blockHandler = "deal_testA")
+public String testA(){
+    String result = "Sentinel TestA  => Port：" + serverPort + "  uuid：" + UUID.randomUUID().toString();
+    log.info(result);
+    return result;
+}
+
+public String deal_testA(){
+    return "系统发生异常：请稍后再试 ≧ ﹏ ≦";
+}
+```
+
+
+
+2、之后我们设置降级规则，每秒请求数如果大于 5 就快速失败
+
+
+
+![image-20210602195251307](SpringCloud.assets/image-20210602195251307.png)
+
+
+
+
+
+
+
+## 39、Sentinel 之热点 key 限流
+
+
+
+### 1、什么是 Sentinel 热点 Key 限流？
+
+
+
+何为热点？热点即经常访问的数据。很多时候我们希望统计某个热点数据中访问频次最高的 Top K 数据，并对其访问进行限制。比如：
+
+-   商品 ID 为参数，统计一段时间内最常购买的商品 ID 并进行限制
+
+-   用户 ID 为参数，针对一段时间内频繁访问的用户 ID 进行限制
+
+    >   例子：
+    >
+    >   http://localhost:8401/payment/query/userId/123456
+    >
+    >   比如用户 Id 123456 访问频繁，我们可以对该用户 Id 进行限流
+
+    
+
+热点参数限流会统计传入参数中的热点参数，并根据配置的限流阈值与模式，对包含热点参数的资源调用进行限流。热点参数限流可以看做是一种特殊的流量控制，仅对包含热点参数的资源调用生效
+
+
+
+![image-20210602185629921](SpringCloud.assets/image-20210602185629921.png)
+
+
+
+>   热点限流的源代码位置：com.alibaba.csp.sentinel.slots.block.BlockException
+
+Sentinel 利用 LRU 策略统计最近最常访问的热点参数，结合令牌桶算法来进行参数级别的流控。热点参数限流支持集群模式。
+
+
+
+
+
+
+
+## 40、Sentinel 之 Resource 配置
+
+
+
+
+
+
+
+
+
+
+
+## 41、Sentinel 之服务熔断
+
+
+
+
+
+
+
+
+
+## 42、分布式事务的由来
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## 43、Seate 简介和安装
+
+
+
+
+
+
+
+
+
+
+
+## 44、Seate 之实战配置
+
+
+
+
+
+
+
+
+
+
+
+
+
+## 45、完结篇 大厂面试第三季预告之雪花算法（上）
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## 46、完结篇 大厂面试第三季预告之雪花算法（下）
 
 
 
