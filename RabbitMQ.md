@@ -848,7 +848,7 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 /**
- * @author: 学相伴-飞哥
+ * @author: Lee
  * @description: Producer 简单队列生产者
  * @Date : 2021/3/2
  */
@@ -913,7 +913,7 @@ package com.xuexiangban.rabbitmq.routing;
 import com.rabbitmq.client.*;
 import java.io.IOException;
 /**
- * @author: 学相伴-飞哥
+ * @author: Lee
  * @description: Consumer
  * @Date : 2021/3/2
  */
@@ -1020,7 +1020,7 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 /**
- * @author: 学相伴-飞哥
+ * @author: Lee
  * @description: Producer 简单队列生产者
  * @Date : 2021/3/2
  */
@@ -1087,7 +1087,7 @@ package com.xuexiangban.rabbitmq.routing;
 import com.rabbitmq.client.*;
 import java.io.IOException;
 /**
- * @author: 学相伴-飞哥
+ * @author: Lee
  * @description: Consumer
  * @Date : 2021/3/2
  */
@@ -1194,7 +1194,7 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 /**
- * @author: 学相伴-飞哥
+ * @author: Lee
  * @description: Producer 简单队列生产者
  * @Date : 2021/3/2
  */
@@ -1260,7 +1260,7 @@ package com.xuexiangban.rabbitmq.routing;
 import com.rabbitmq.client.*;
 import java.io.IOException;
 /**
- * @author: 学相伴-飞哥
+ * @author: Lee
  * @description: Consumer
  * @Date : 2021/3/2
  */
@@ -1372,7 +1372,7 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 /**
- * @author: 学相伴-飞哥
+ * @author: Lee
  * @description: Producer 简单队列生产者
  * @Date : 2021/3/2
  */
@@ -1439,7 +1439,7 @@ package com.xuexiangban.rabbitmq.work.lunxun;
 import com.rabbitmq.client.*;
 import java.io.IOException;
 /**
- * @author: 学相伴-飞哥
+ * @author: Lee
  * @description: Consumer
  * @Date : 2021/3/2
  */
@@ -1527,7 +1527,7 @@ package com.xuexiangban.rabbitmq.work.lunxun;
 import com.rabbitmq.client.*;
 import java.io.IOException;
 /**
- * @author: 学相伴-飞哥
+ * @author: Lee
  * @description: Consumer
  * @Date : 2021/3/2
  */
@@ -1638,7 +1638,7 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 /**
- * @author: 学相伴-飞哥
+ * @author: Lee
  * @description: Producer 简单队列生产者
  * @Date : 2021/3/2
  */
@@ -1705,7 +1705,7 @@ package com.xuexiangban.rabbitmq.work.fairr;
 import com.rabbitmq.client.*;
 import java.io.IOException;
 /**
- * @author: 学相伴-飞哥
+ * @author: Lee
  * @description: Consumer
  * @Date : 2021/3/2
  */
@@ -1794,7 +1794,7 @@ package com.xuexiangban.rabbitmq.work.fairr;
 import com.rabbitmq.client.*;
 import java.io.IOException;
 /**
- * @author: 学相伴-飞哥
+ * @author: Lee
  * @description: Consumer
  * @Date : 2021/3/2
  */
