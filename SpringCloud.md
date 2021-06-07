@@ -1328,7 +1328,7 @@ public CommonResult createPayment(@RequestBody Payment payment)
 
 
 
-## 6、工程重构
+## 6、微服务的工程重构
 
 
 
@@ -7867,11 +7867,9 @@ https://github.com/alibaba/spring-cloud-alibaba/blob/master/README-zh.md
 
 
 
-Github网址：https://github.com/alibaba/Nacos
-
-Nacos 官方网址：https://nacos.io/zh-cn/
-
-
+>   Github 网址：https://github.com/alibaba/Nacos
+>
+>   Nacos 官方网址：https://nacos.io/zh-cn/
 
 
 
@@ -7902,7 +7900,7 @@ sh startup.sh -m standalone
 
 关闭
 
-```
+```apl
 cd /usr/local/nacos/bin
 sh shutdown.sh -m standalone
 ```
@@ -12422,7 +12420,6 @@ ACID 四个特性最终要达成的目的就是一致性。数据库设计的时
 
 
 >   在数据库中，即有存放数据的文件，也有存放日志的文件，日志在内存中也是有缓存 Log Buffer，也有磁盘文件 Log File。MySQL 中的日志文件，有这么两种与事务有关：undo 日志 与 redo 日志
->
 
 
 
@@ -13196,7 +13193,7 @@ AT模式的一阶段、二阶段提交和回滚均由 `Seata` 框架自动生成
 
 
 
-## 44、分布式事务 Seate 简介和安装
+## 44、分布式事务 Seata 简介安装
 
 
 
@@ -13603,6 +13600,1557 @@ Saga 模式是 Seata 提供的长事务解决方案，在 Saga 模式中，业�
 
 
 
+### 6、`Seata_Server` 的安装
+
+
+
+#### 1、`Seata` 官网下载地址
+
+
+
+>   `Seata` 官网下载地址：http://seata.io/zh-cn/blog/download.html
+>
+>   官网版本选型推荐：https://github.com/alibaba/spring-cloud-alibaba/wiki/%E7%89%88%E6%9C%AC%E8%AF%B4%E6%98%8E
+
+
+
+#### 2、`Seata` 之 CentOS-7 版本安装
+
+
+
+>   注意：本案例采用环境版本
+>
+>   -    `Seata-1.3.0`
+>   -   `jdk-1.8`
+>   -   `mysql-5.7`
+>   -   `nacos-1.4.1`
+
+
+
+##### 1、下载 `Seata` 安装包
+
+
+
+将安装包拷入 Linux 系统的安装目录
+
+![image-20210606174627730](SpringCloud.assets/image-20210606174627730.png)
+
+
+
+##### 2、执行以下解压指令：
+
+```apl
+tar -xvf seata-server-1.3.0.tar.gz
+```
+
+
+
+###### **`seata` 目录详解**
+
+
+
+我们可以进入 `seata` 文件夹，解压完成后我们得到了几个文件夹
+
+-   **bin**
+
+    存放各个系统的`seata server`启动脚本
+
+-   **conf**
+
+    存在`seata server`启动时所需要的配置信息、数据库模式下所需要的建表语句
+
+-   **lib**
+
+    运行`seata server`所需要的依赖包列表
+
+![image-20210606174850337](SpringCloud.assets/image-20210606174850337.png)
+
+
+
+##### 3、修改配置 `file.conf`
+
+
+
+###### 1、修改之前建议备份
+
+
+
+>   **严重建议**：修改前先建议备份一份初始配置
+>
+>   ```apl
+>   # 拷贝一份副本在进行修改
+>   cp file.conf file.conf.init
+>   ```
+
+
+
+###### 2、主要修改配置介绍
+
+
+
+>   主要修改配置：
+
+-   该文件用于配置`存储方式`、`透传事务信息的NIO`等信息，默认对应`registry.conf`文件内的`file`方式配置
+
+
+
+###### 3、修改前的 `mysql` 环境准备
+
+
+
+>   在 `mysql` 端新建一个 db 名为 `seata`
+
+![image-20210606182727255](SpringCloud.assets/image-20210606182727255.png)
+
+
+
+旧版本 `v0.0.9` 然后将 `seata/conf` 配置文件中的 `db_store.sql` 文件放在新建的 db 上执行
+
+新版本的 `SQL` 脚本需要在 `README.md` 文件上自行下载：如下图
+
+>   脚本下载地址：https://github.com/seata/seata/tree/develop/script/server
+
+![image-20210606183236867](SpringCloud.assets/image-20210606183236867.png)
+
+创建好以后会有三张表
+
+![image-20210606184219446](SpringCloud.assets/image-20210606184219446.png)
+
+
+
+###### 4、然后修改 `file.conf` 配置文件
+
+
+
+-   主要将 mode =  "file" 修改为 db 模式
+-   然后将 db 块的信息改成自己的 mysql 配置信息
+-   以下仅将修改块的配置贴出
+
+```shell
+## transaction log store, only used in seata-server
+store {
+  ## store mode: file、db、redis
+  mode = "db"   # 修改 为 db 模式
+
+  ## database store property
+  db {
+    ## the implement of javax.sql.DataSource, such as DruidDataSource(druid)/BasicDataSource(dbcp)/HikariDataSource(hikari) etc.
+    datasource = "druid"
+    ## mysql/oracle/postgresql/h2/oceanbase etc.
+    dbType = "mysql"
+    driverClassName = "com.mysql.jdbc.Driver"
+    # 修改项 --------------Start------------------
+    # 自己的 mysql 连接地址
+    url = "jdbc:mysql://192.168.1.166:3306/seata"
+    # mysql 用户名
+    user = "root"
+    # mysql 密码
+    password = "Lee193654300_"
+    # 修改项 ----------------End----------------
+    minConn = 5
+    maxConn = 30
+    globalTable = "global_table"
+    branchTable = "branch_table"
+    lockTable = "lock_table"
+    queryLimit = 100
+    maxWait = 5000
+  }
+}
+```
+
+
+
+##### 4、修改配置 `registry.conf`
+
+
+
+###### 1、修改之前建议备份
+
+
+
+>   **严重建议**：修改前先建议备份一份初始配置
+>
+>   ```apl
+>   # 拷贝一份副本在进行修改
+>   cp registry.conf registry.conf.init
+>   ```
+
+
+
+###### 2、主要修改配置介绍
+
+
+
+可以通过该文件配置`服务注册方式`、`配置读取方式`
+
+>   registry 块：其实就是配置 `Seata-Server` 注册到服务注册中心
+>
+>   `config` 块：其实就是配置  `Seata-Server` 的配置中心是哪个
+
+
+
+###### 3、修改 registry 块配置为 `nacos`
+
+
+
+-   将 type 修改为 `nacos` 服务注册中心
+-   将 `nacos.serverAddr` 修改为 `nacos` 服务地址
+-   将  `nacos.namespace` 修改为 `我们自己的命名空间 ID`
+
+>   要修改 name space ：前提是先要去 `nacos` 中新建一个 `seata_namespace` 的命名空间，然后将命名空间的ID 拷贝过来
+
+-   以下仅将需要修改的代码块贴出
+
+```shell
+registry {
+  # file 、nacos 、eureka、redis、zk、consul、etcd3、sofa
+  type = "nacos"  # 将 type 修改为 nacos 服务注册中心
+
+  nacos {
+    application = "seata-server"
+    serverAddr = "192.168.1.166:8848" # 将 nacos.serverAddr 修改为 nacos 服务地址
+    group = "SEATA_GROUP"
+    namespace = "0a532cb5-f8d0-4fd4-93db-0dd8a0ed41b5"     # 切换命名空间为我们自己的
+    cluster = "default"
+    username = ""
+    password = ""
+  }
+}
+```
+
+
+
+###### 4、修改 config 块配置为 `nacos`
+
+
+
+-   修改 type
+-   修改 `serverAddr`
+-   修改 name space
+-   以下仅将需要修改的代码块贴出
+
+```shell
+config {
+  # file、nacos 、apollo、zk、consul、etcd3
+  type = "nacos"
+  
+  nacos {
+    serverAddr = "192.168.1.166:8848"
+    namespace = "0a532cb5-f8d0-4fd4-93db-0dd8a0ed41b5"
+    group = "SEATA_GROUP"
+    username = ""
+    password = ""
+  } 
+}
+```
+
+
+
+##### 5、将 Seata 参数配置到 Nacos 配置中心
+
+
+
+###### **1、该步骤的好处**
+
+
+
+>   我们可以需要把 Seata 的配置同步到 Nacos 的配置中心当中，这样我们就不需要再项目中写 file.conf 和 registry.conf 两个配置文件了，可以直接配置在 yml 中指定 nacos 配置中心就可以拉取到 seata 的配置了
+
+
+
+###### **2、到 github 下载如下两个文件**
+
+
+
+我们需要将 config.txt 文件 和 nacos/nacos-config.sh 脚本下载下来
+
+Github 地址：https://github.com/seata/seata/tree/develop/script/config-center
+
+![image-20210606213022060](SpringCloud.assets/image-20210606213022060.png)
+
+
+
+###### **3、之后我们先修改文件配置**
+
+
+
+>   修改 config.txt 配置
+>
+>   详细参数说明可以参考官网：https://seata.io/zh-cn/docs/user/configurations.html
+
+主要修改 mode = db 模式，和下面的 mysql 数据源配置，其它参数保留不变，以下仅贴出需要修改的部分
+
+```properties
+store.mode=db
+store.db.datasource=druid
+store.db.dbType=mysql
+store.db.driverClassName=com.mysql.jdbc.Driver
+store.db.url=jdbc:mysql://192.168.1.166:3306/seata?useUnicode=true&rewriteBatchedStatements=true
+store.db.user=root
+store.db.password=Lee193654300_
+```
+
+
+
+>   额外需要注意参数的参数是： `service.vgroup_mapping`
+>
+>   service.vgroup_mapping.**${your-service-name}**-group=default：中间的 .${your-service-name} 为自己定义的微服务名称，SpringBlade 默认为 service-name-group 的格式
+
+官方解释为事务群组，具体使用多少个事务群体没有明确指出。但通过查看文档和部分开源项目发现，大多都采用将**key 值设置为服务端的服务名**，有多少个微服务就添加多少行。在接下来的 demo 中要使用三个微服务作为示例，因此添加：以下将要采用为微服务的名称，并在 conf.txt 中添加以下三行配置
+
+```properties
+service.vgroupMapping.seata-order-service-group=default
+service.vgroupMapping.seata-storage-service-group=default
+service.vgroupMapping.seata-account-service-group=default
+```
+
+>   以上配置的三行就是下面的三个微服务名成：
+>
+>   -   seata-order-service
+>-   seata-storage-service
+>   -   seata-account-service
+
+
+
+###### **4、将文件传入 Linux 中的 seata 的目录**
+
+
+
+注意：config.txt 文件需要在 nacos-config.sh 文件的上一级目录，不然找不到文件
+
+比如：
+
+-   config.txt 在 /opt/seata/ 目录
+-   nacos-config.sh 在 /opt/seata/conf 目录
+
+
+
+###### **5、将参数同步配置到 nacos 配置中心**
+
+
+
+>   运行如下命令、完整参数参数说明：
+
+-   **-h**：host，nacos 服务地址、默认值 localhost
+-   **-p**：port，nacos 服务端口、默认值 8848
+-   **-g**：配置分组，默认值为 'SEATA_GROUP'
+-   **-t**：租户信息，对应 Nacos 的命名空间ID字段, 默认值为空
+
+```apl
+# 将配置同步到自己的 seata_namespace 命名空间下
+sh nacos-config.sh -t 0a532cb5-f8d0-4fd4-93db-0dd8a0ed41b5
+```
+
+
+
+###### **6、查看 nacos 的配置是否成功**
+
+
+
+查看 nacos 配置中心、醉了，seata 的参数竟然不是一个 yml 文件，有多少条配置就创建多少个文件，也是醉了
+
+![image-20210607162414913](SpringCloud.assets/image-20210607162414913.png)
+
+
+
+##### 6、更改 Seata 日志默认输出路径
+
+
+
+###### **1、创建 seata/logs 文件夹**
+
+
+
+我们需要在 seata 的安装路径下创建 logs 文件夹存放 seata 的 gc log，不然启动有警告
+
+```apl
+Java HotSpot(TM) 64-Bit Server VM warning: 
+Cannot open file /opt/seata/logs/seata_gc.log due to No such file or directory
+```
+
+
+
+###### **2、更改日志默认输出路径**
+
+
+
+另外我们还需要在 seata/conf 配置文件下，修改文件 logback.xml 配置文件，将 LOG_HOME 修改为我们创建的路径
+
+```xml
+<property name="LOG_HOME" value="/opt/seata/logs"/>
+```
+
+
+
+##### 7、启动 `seata` 命令
+
+
+
+###### **1、`Linux/Mac`启动方式示例如下所示：**
+
+
+
+**要确保启动 seata 之前要先启动 nacos 服务**
+
+```apl
+# 在前台运行
+sh seata-server.sh
+sh seata-server.sh -p 8091 -h 127.0.0.1
+# 在后台运行
+nohup sh seata-server.sh -m file &> seata.log &
+nohup sh seata-server.sh -p 8091 -h 127.0.0.1 -m file &> seata.log &
+```
+
+通过`nohup`命令让`seata server`在系统后台运行
+
+
+
+###### **2、启动参数详细说明**
+
+
+
+脚本参数：
+
+-   **-p**
+
+    指定启动`seata server`的端口号
+
+-   **-h**
+
+    指定`seata server`所绑定的`主机`，这里配置要注意**指定的主机 IP 要与业务服务内的配置文件保持一致**，如：`-h 192.168.1.10`，业务服务配置文件内应该配置`192.168.1.10`，即使在同一台主机上也要保持一致
+
+-   **-m**
+
+    事务日志、事务执行信息存储的方式，目前支持`file`（文件方式）、`db`（数据库方式，建表语句请查看`config/db_store.sql`、`config/db_undo_log.sql`）
+
+-   **-n**
+
+    Server node，多个Server时，需区分各自节点，用于生成不同区间的transactionId，以免冲突    
+
+-   **-e**
+
+    多环境配置参考 http://seata.io/en-us/docs/ops/multi-configuration-isolation.html
+
+
+
+>   启动成功，我们可以在 nacos 的服务注册中心看到 seata-server 的服务
+
+![image-20210607094136223](SpringCloud.assets/image-20210607094136223.png)
+
+
+
+##### 8、踩坑报错记录
+
+
+
+###### 1、出现报错：UnknownHostException
+
+```ABAP
+Exception in thread "main" java.lang.IllegalStateException: Cannot get LocalHost InetAddress, please check your network!
+	at io.seata.common.util.IdWorker.initWorkerId(IdWorker.java:159)
+	at io.seata.server.ParameterParser.init(ParameterParser.java:81)
+	at io.seata.server.ParameterParser.<init>(ParameterParser.java:60)
+	at io.seata.server.Server.main(Server.java:72)
+Caused by: java.net.UnknownHostException: lee: lee: 未知的名称或服务
+	at java.net.InetAddress.getLocalHost(InetAddress.java:1506)
+	at io.seata.common.util.IdWorker.initWorkerId(IdWorker.java:157)
+	... 3 more
+Caused by: java.net.UnknownHostException: lee: 未知的名称或服务
+	at java.net.Inet6AddressImpl.lookupAllHostAddr(Native Method)
+	at java.net.InetAddress$2.lookupAllHostAddr(InetAddress.java:929)
+	at java.net.InetAddress.getAddressesFromNameService(InetAddress.java:1324)
+	at java.net.InetAddress.getLocalHost(InetAddress.java:1501)
+	... 4 more
+```
+
+我们在 Linux 中输入 hostname 查看主机名：
+
+```scala
+[root@lee etc]# hostname
+lee
+```
+
+>   发现主机名为 lee ，我们要做的就是在 /etc/hosts 文件中添加这个地址的映射
+
+```apl
+# 在最后面添加上 lee
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4 lee
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+```
+
+重启网络服务：
+
+```apl
+service network restart
+```
+
+然后重新启动 seata ，发现问题解决
+
+![image-20210607093630175](SpringCloud.assets/image-20210607093630175.png)
+
+
+
+## 44、分布式事务 Seata 实战配置
+
+
+
+### 1、Seata 业务数据库准备
+
+
+
+#### 1、业务流程说明
+
+
+
+>   业务流程：这里我们会创建三个服务
+>
+>   -   订单服务
+>   -   库存服务
+>   -   账户服务
+>
+>   1.  当用户下单时，会在【订单服务】中创建一个订单
+>   2.  然后通过远程调用【库存服务】来扣减下单商品的库存
+>   3.  再通过远程调用【账户服务】来扣减用户账户里面的余额
+>   4.  最后在【订单服务】中修改订单状态为已完成
+
+下订单 --> 扣库存 --> 减账户(余额)
+
+该操作跨越三个数据库，有两次远程调用，很明显会有分布式事务问题
+
+
+
+#### 2、创建业务数据库
+
+
+
+我们需要创建以下三张表
+
+-   seata_order：存储订单的数据库
+-   seata_storage：存储库存的数据库
+-   seata_account：存储账户信息的数据库
+
+>   我们用以下脚本建立三个独立的库和独立的表
+
+```sql
+-- 创建 DB seata_order
+CREATE DATABASE seata_order;
+
+-- 选中 DB seata_order
+USE seata_order;
+
+CREATE TABLE t_order(
+    id BIGINT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY ,
+    user_id BIGINT(11) DEFAULT NULL COMMENT '用户id',
+    product_id BIGINT(11) DEFAULT NULL COMMENT '产品id',
+    count INT(11) DEFAULT NULL COMMENT '数量',
+    money DECIMAL(11,0) DEFAULT NULL COMMENT '金额',
+    status INT(1) DEFAULT NULL COMMENT '订单状态：0创建中，1已完结'
+)ENGINE=InnoDB AUTO_INCREMENT=7 CHARSET=utf8;
+
+-- 创建 DB seata_storage
+CREATE DATABASE seata_storage;
+-- 选中 DB seata_storage
+USE seata_storage;
+
+CREATE TABLE t_storage(
+    id BIGINT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY ,
+    product_id BIGINT(11) DEFAULT NULL COMMENT '产品id',
+    total INT(11) DEFAULT NULL COMMENT '总库存',
+    used INT(11) DEFAULT NULL COMMENT '已用库存',
+    residue INT(11) DEFAULT NULL COMMENT '剩余库存'
+)ENGINE=InnoDB AUTO_INCREMENT=7 CHARSET=utf8;
+
+INSERT INTO t_storage(id, product_id, total, used, residue) VALUES(1,1,100,0,100);
+
+-- 创建 DB seata_account
+CREATE DATABASE seata_account;
+-- 选中 DB seata_account
+USE seata_account;
+
+CREATE TABLE t_account(
+    id BIGINT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY ,
+    user_id BIGINT(11) DEFAULT NULL COMMENT '用户id',
+    total DECIMAL(10,0) DEFAULT NULL COMMENT '总额度',
+    used DECIMAL(10,0) DEFAULT NULL COMMENT '已用额度',
+    residue DECIMAL(10,0) DEFAULT 0 COMMENT '剩余可用额度'
+)ENGINE=InnoDB AUTO_INCREMENT=7 CHARSET=utf8;
+
+INSERT INTO t_account(id, user_id, total, used, residue) VALUES(1,1,1000,0,1000);
+```
+
+
+
+#### 3、创建 3 个库的对应回滚日志表
+
+
+
+>   订单 - 库存 - 账户 3 个库下都需要建立各自的回滚日志表
+
+需要将以下的 SQL 放到各自的三个库中执行一下
+
+```sql
+CREATE TABLE `undo_log` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `branch_id` bigint(20) NOT NULL,
+  `xid` varchar(100) NOT NULL,
+  `context` varchar(128) NOT NULL,
+  `rollback_info` longblob NOT NULL,
+  `log_status` int(11) NOT NULL,
+  `log_created` datetime NOT NULL,
+  `log_modified` datetime NOT NULL,
+  `ext` varchar(100) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `ux_undo_log` (`xid`,`branch_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
+```
+
+
+
+### 2、Seata 之应用分层模型规约
+
+
+
+#### 1、规约来源
+
+
+
+>   以下取自 阿里巴巴 Java 开发手册规定内容
+
+
+
+#### 2、分层领域模型规约
+
+
+
+-   **DO (Data Object)**：与数据库表结构一一对应，通过 DAO 层向上传输数据源对象
+-   **DTO (Data Transfer Object)**：数据传输对象，Service 或 Manager 向外传输的对象
+-   **BO (Business Object)**：业务对象，由 Service 层输出的封装业务逻辑的对象
+-   
+-   **VO (View Object)**：显示层对象，通常是 Web 向模板渲染引擎传输的对象
+-   **Query**：数据源对象，各层接收上层的查询请求。【强制】：如果是超过2个参数的查询封装，则禁止使用 Map 类来传输
+
+
+
+#### 3、领域模型命名规约
+
+
+
+-   数据对象：xxxDO，xxx即为数据表名。
+-   数据传输对象：xxxDTO，xxx为业务领域相关的名称。
+-   展示对象：xxxVO，xxx一般为网页名称。
+-   POJO是DO/DTO/BO/VO的统称，禁止命名成xxxPOJO
+
+![image-20210607110958035](SpringCloud.assets/image-20210607110958035.png)
+
+
+
+### 3、Seata 之 Module 配置搭建
+
+
+
+#### 1、新建订单工程 Order-Module
+
+
+
+>   新建完整工程名： seata-order-service2001
+
+
+
+##### 1、改 POM
+
+
+
+>   踩坑点：这里的 Seata 不能用官网推的依赖，由于 seata-spring-boot-starter 所包含的 seata-all 并不是对应最新的 1.3 版本，启动会导致 ClassNotFoundException，详细错误见踩坑记录 1，以下的依赖是踩坑过来的，引入即可
+
+```xml
+<dependencies>
+    <!--SpringCloud Alibaba Nacos-->
+    <dependency>
+        <groupId>com.alibaba.cloud</groupId>
+        <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+        <version>2.2.5.RELEASE</version>
+    </dependency>
+
+    <!--Nacos config 配置中心-->
+    <!--<dependency>
+        <groupId>com.alibaba.cloud</groupId>
+        <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
+    </dependency>-->
+
+    <!-- SpringCloud Alibaba Seata-->
+    <dependency>
+        <groupId>com.alibaba.cloud</groupId>
+        <artifactId>spring-cloud-starter-alibaba-seata</artifactId>
+        <version>2.2.1.RELEASE</version>
+        <exclusions>
+            <exclusion>
+                <groupId>io.seata</groupId>
+                <artifactId>seata-spring-boot-starter</artifactId>
+            </exclusion>
+        </exclusions>
+    </dependency>
+
+    <dependency>
+        <groupId>io.seata</groupId>
+        <artifactId>seata-spring-boot-starter</artifactId>
+        <version>1.3.0</version>
+        <exclusions>
+            <exclusion>
+                <groupId>io.seata</groupId>
+                <artifactId>seata-all</artifactId>
+            </exclusion>
+        </exclusions>
+    </dependency>
+
+    <dependency>
+        <groupId>io.seata</groupId>
+        <artifactId>seata-all</artifactId>
+        <version>1.3.0</version>
+    </dependency>
+
+    <!--SpringCloud alibaba Sentinel-->
+    <dependency>
+        <groupId>com.alibaba.cloud</groupId>
+        <artifactId>spring-cloud-starter-alibaba-sentinel</artifactId>
+        <version>2.2.5.RELEASE</version>
+    </dependency>
+
+    <!-- openfeign -->
+    <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-starter-openfeign</artifactId>
+    </dependency>
+
+    <!--  web 和 actuator 是标配、必须要写  -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+
+    <!-- 数据源和持久化框架配置 -->
+
+    <!--mybatis 和 springboot 整合-->
+    <dependency>
+        <groupId>org.mybatis.spring.boot</groupId>
+        <artifactId>mybatis-spring-boot-starter</artifactId>
+    </dependency>
+
+    <!--mysql-connector-java-->
+    <dependency>
+        <groupId>mysql</groupId>
+        <artifactId>mysql-connector-java</artifactId>
+    </dependency>
+
+    <!--jdbc-->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+
+    <!-- 导入 Swagger 配置 -->
+    <dependency>
+        <groupId>io.springfox</groupId>
+        <artifactId>springfox-swagger2</artifactId>
+    </dependency>
+
+    <dependency>
+        <groupId>io.springfox</groupId>
+        <artifactId>springfox-swagger-ui</artifactId>
+    </dependency>
+
+    <!-- lombok 工具-->
+    <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <optional>true</optional>
+    </dependency>
+
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-test</artifactId>
+    </dependency>
+</dependencies>
+```
+
+
+
+##### 2、编写 YML
+
+```yaml
+server:
+  port: 2001
+
+spring:
+  application:
+    name: seata-order-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 192.168.1.166:8848
+        namespace: 0a532cb5-f8d0-4fd4-93db-0dd8a0ed41b5
+#      config:
+#        # Nacos 服务配置中心地址
+#        server-addr: http://192.168.1.166:8848
+#        # 指定配置类型
+#        file-extension: text
+#        # 指定配置文件分组
+#        group: SEATA_GROUP
+#        namespace: 0a532cb5-f8d0-4fd4-93db-0dd8a0ed41b5
+
+  # 配置数据源
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource  # 当前数据源操作类型
+    driver-class-name: org.gjt.mm.mysql.Driver    # mysql驱动包
+    url: jdbc:mysql://192.168.1.166:3306/seata_order?useUnicode=true&characterEncoding=utf8&useSSL=false
+    username: home
+    password: Lee193654300_
+
+# 配置 Seata 相关配置
+seata:
+  enabled: true
+  application-id: ${spring.application.name}
+  tx-service-group: ${spring.application.name}-group
+  # 使用 Seata 对数据源进行代理
+  enable-auto-data-source-proxy: true
+  config:
+    type: nacos
+    nacos:
+      server-addr: 192.168.1.166:8848
+      namespace: 0a532cb5-f8d0-4fd4-93db-0dd8a0ed41b5
+      group: SEATA_GROUP
+      username: nacos
+      password: nacos
+  registry:
+    type: nacos
+    nacos:
+      application: seata-server
+      server-addr: 192.168.1.166:8848
+      namespace: 0a532cb5-f8d0-4fd4-93db-0dd8a0ed41b5
+      group: SEATA_GROUP
+      username: nacos
+      password: nacos
+
+# 配置 mybatis 映射文件路径 和 包别名路径
+mybatis:
+  mapper-locations: classpath*:mapper/*.xml
+  type-aliases-package: com.lee.springcloud.entities
+
+feign:
+  hystrix:
+    enabled: false
+
+logging:
+  level:
+    io:
+      seata: info
+```
+
+
+
+##### 3、改配置 file.conf
+
+-   该步骤已经在 安装 Seata 的时候，将配置 config.txt 同步到 nacos 配置中心了，所以这里可以直接采取 yml 方式配置，需要 seata 0.0.9 版本以上支持 yml 方式配置
+
+
+##### 4、改配置 registry.conf
+
+-   同上
+
+
+
+##### 5、编写 entities
+
+###### 1、编写 Order
+
+```java
+package com.lee.springcloud.entities;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.io.Serializable;
+import java.math.BigDecimal;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Order implements Serializable {
+    // 主键
+    private Long id;
+    // 用户ID
+    private Long userId;
+    //产品 ID
+    private Long productId;
+    //数量
+    private Integer count;
+    //金额
+    private BigDecimal money;
+    /**
+     * 订单状态
+     *   0：创建中
+     *   1：已完结
+     */
+    private Integer status;
+}
+```
+
+
+
+###### 2、编写 CommonResult
+
+```java
+package com.lee.springcloud.entities;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class CommonResult<T> {
+
+    private Integer code;
+    private String message;
+    private T data;
+
+    public CommonResult(Integer code, String message){
+        this(code, message, null);
+    }
+}
+```
+
+
+
+##### 6、Dao 接口和实现
+
+
+
+>   创建订单需要两个基础方法
+>
+>   -   创建订单
+>   -   修改订单状态 是否已完成
+
+```java
+package com.lee.springcloud.dao;
+
+import com.lee.springcloud.entities.Order;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+
+@Mapper
+public interface OrderDao {
+
+    /**
+     * 创建一个订单
+     * @param order
+     */
+    void createOrder(Order order);
+
+    /**
+     * 根据用户 id 修改订单状态
+     * @param userId
+     * @param status
+     */
+    void updateOrderById(@Param("userId") Long userId, @Param("status") Integer status);
+}
+```
+
+
+
+##### 7、Service 接口及实现
+
+
+
+###### 1、编写 OrderService
+
+```java
+package com.lee.springcloud.service;
+
+import com.lee.springcloud.entities.Order;
+
+/**
+ * 订单接口
+ */
+public interface OrderService {
+    /**
+     * 创建一条订单
+     * @param order
+     */
+    boolean createOrder(Order order);
+}
+```
+
+###### 2、编写 AccountService 
+
+>   这里采用 openFeign 远程调用，因为已经跨库存服务了
+
+```java
+package com.lee.springcloud.service;
+
+import com.lee.springcloud.entities.CommonResult;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import java.math.BigDecimal;
+
+@FeignClient("seata-account-service")
+public interface AccountService {
+    /**
+     * 对帐户余额做扣减操作
+     * @param userId 用户 ID
+     * @param money 金额
+     * @return
+     */
+    @PostMapping("/account/decreaseMoney")
+    CommonResult decreaseMoney(@RequestParam("userId") Long userId, @RequestParam("money") BigDecimal money);
+}
+```
+
+###### 3、编写 StorageService
+
+```java
+package com.lee.springcloud.service;
+
+import com.lee.springcloud.entities.CommonResult;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+/**
+ * 库存微服务
+ */
+@FeignClient("seata-storage-service")
+public interface StorageService {
+
+    /**
+     * 根据产品减库存操作
+     * @param productId 产品 ID
+     * @param count 数量
+     * @return
+     */
+    @PostMapping(value = "/storage/decreaseStock")
+    CommonResult decreaseStock(@RequestParam("productId") Long productId, @RequestParam("count") Integer count);
+}
+```
+
+4、编写 OrderServiceImpl 的实现类
+
+>   创建订单的业务流程如下
+
+1.  当用户下单时，会在【订单服务】中创建一个订单
+2.  然后通过远程调用【库存服务】来扣减下单商品的库存
+3.  再通过远程调用【账户服务】来扣减用户账户里面的余额
+4.  最后在【订单服务】中修改订单状态为已完成
+
+```java
+package com.lee.springcloud.service.impl;
+
+import com.lee.springcloud.dao.OrderDao;
+import com.lee.springcloud.entities.Order;
+import com.lee.springcloud.service.AccountService;
+import com.lee.springcloud.service.OrderService;
+import com.lee.springcloud.service.StorageService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import javax.annotation.Resource;
+
+@Slf4j
+@Service
+public class OrderServiceImpl implements OrderService {
+
+    @Resource
+    private OrderDao orderDao;
+    @Resource
+    private StorageService storageService;
+    @Resource
+    private AccountService accountService;
+
+    @Override
+    public boolean createOrder(Order order) {
+
+        orderDao.createOrder(order);
+        log.info(" ------------------> 订单微服务：创建订单完成");
+
+        storageService.decreaseStock(order.getProductId(), order.getCount());
+        log.info(" ------------------> 订单微服务 => 库存微服务 扣减库存已完成");
+
+        accountService.decreaseMoney(order.getUserId(), order.getMoney());
+        log.info(" ------------------> 订单微服务 => 账户微服务 扣减余额已完成");
+
+        /**
+         * 将订单状态修改为 1
+         *   set status = 1 where status = #{status}
+         */
+        orderDao.updateOrderById(order.getUserId(), 0);
+        log.info(" ------------------> 订单微服务 创建订单流程结束");
+
+        return true;
+    }
+}
+```
+
+
+
+##### 8、编写 Controller
+
+```java
+package com.lee.springcloud.controller;
+
+import com.lee.springcloud.entities.CommonResult;
+import com.lee.springcloud.entities.Order;
+import com.lee.springcloud.service.OrderService;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import javax.annotation.Resource;
+
+@Slf4j
+@RestController
+@Api("服务提供者：订单模块-2001")
+public class OrderController {
+
+    @Resource
+    private OrderService orderService;
+
+    @ApiOperation("创建一个订单")
+    @PostMapping("/order/createOrder")
+    public CommonResult createOrder(Order order){
+
+        boolean createResult = orderService.createOrder(order);
+
+        if(createResult){
+            return new CommonResult(200, "订单创建成功");
+        }else{
+            return new CommonResult(444, "发生异常 --> 订单创建失败");
+        }
+    }
+}
+```
+
+
+
+##### 9、Config 配置
+
+
+
+###### 1、SwaggerConfig 配置类
+
+```java
+package com.lee.springcloud.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+import springfox.documentation.builders.RequestHandlerSelectors;
+import springfox.documentation.service.ApiInfo;
+import springfox.documentation.service.Contact;
+import springfox.documentation.spi.DocumentationType;
+import springfox.documentation.spring.web.plugins.Docket;
+import springfox.documentation.swagger2.annotations.EnableSwagger2;
+
+import java.util.ArrayList;
+
+/**
+ * 配置 Swagger
+ */
+@Configuration
+@EnableSwagger2 //开启 Swagger2
+public class SwaggerConfig {
+
+    /**
+     * 配置 Swagger Docket 的 bean 实例
+     * @param environment
+     * @return
+     */
+    @Bean
+    public Docket docket(Environment environment){
+
+        //apiInfo() 可以设置 Swagger 界面的描述
+        return new Docket(DocumentationType.SWAGGER_2)
+                /**
+                 * 添加 Swagger 的描述信息
+                 */
+                .apiInfo(getApiInfo())
+                /**
+                 * 分组
+                 */
+                .groupName("seata-order-service2001")
+                .select()
+                /**
+                 * apis：添加要扫描的 api 接口规则
+                 *   RequestHandlerSelectors
+                 *      any()：扫描全部
+                 *      none()：不扫描
+                 *      withClassAnnotation()：扫描类上的注解
+                 *      withMethodAnnotation()：扫描方法上的注解
+                 *      basePackage()：扫描包下的所有 (最常用)
+                 */
+                .apis(RequestHandlerSelectors.basePackage("com.lee.springcloud.controller"))
+                /**
+                 * paths()：设置过滤规则
+                 */
+                /*.paths(PathSelectors.ant("/swagger/**"))*/
+                .build();
+    }
+
+    /**
+     * 配置 Swagger 的接口描述信息
+     * @return
+     */
+    private ApiInfo getApiInfo(){
+        //配置作者信息
+        Contact contact = new Contact("Lee Provider", "https://space.bilibili.com/486305074", "javaleerf@163.com");
+
+        return new ApiInfo(
+                "微服务：订单模块2001",
+                "SpringCloudAlibaba 即将启航",
+                "v1.0",
+                "https://space.bilibili.com/486305074",
+                contact,
+                "Apache 2.0",
+                "http://www.apache.org/licenses/LICENSE-2.0",
+                new ArrayList()
+        );
+    }
+}
+```
+
+###### 2、配置 Seata 代理数据源的配置
+
+>   这里踩了很多坑，可以看 4 小节的踩坑记录，以下是踩坑完善过的版本
+
+```java
+package com.lee.springcloud.config;
+
+import com.alibaba.druid.pool.DruidDataSource;
+import io.seata.rm.datasource.DataSourceProxy;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.mybatis.spring.SqlSessionFactoryBean;
+import org.mybatis.spring.transaction.SpringManagedTransactionFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+
+import javax.sql.DataSource;
+
+/**
+ * 使用 Seata 对数据源进行代理
+ */
+@Configuration
+public class DataSourceProxyConfig {
+
+    @Value("classpath*:mapper/*.xml")
+    private String mapperLocations;
+
+    @Value("com.lee.springcloud.entities")
+    private String typeAliasesPackage;
+
+    @Bean
+    @ConfigurationProperties(prefix = "spring.datasource")
+    public DataSource druidDataSource(){
+        return new DruidDataSource();
+    }
+
+    @Bean
+    public DataSourceProxy dataSourceProxy(DataSource dataSource){
+        return new DataSourceProxy(dataSource);
+    }
+
+    @Bean
+    public SqlSessionFactory sqlSessionFactoryBean(DataSourceProxy dataSourceProxy) throws Exception {
+        SqlSessionFactoryBean sqlSessionBean = new SqlSessionFactoryBean();
+        sqlSessionBean.setDataSource(dataSourceProxy);
+        //加载 MyBatis 的 mapper.xml 配置
+        sqlSessionBean.setMapperLocations(new PathMatchingResourcePatternResolver().getResources(mapperLocations));
+        sqlSessionBean.setTransactionFactory(new SpringManagedTransactionFactory());
+        //设置别名
+        sqlSessionBean.setTypeAliasesPackage(typeAliasesPackage);
+        return sqlSessionBean.getObject();
+    }
+}
+```
+
+
+
+##### 10、编写主启动类
+
+```java
+package com.lee.springcloud;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.openfeign.EnableFeignClients;
+
+@EnableFeignClients
+@EnableDiscoveryClient
+/* 取消数据源的自动创建，而是使用自己定义的 */
+@SpringBootApplication(exclude = DataSourceAutoConfiguration.class)
+public class SeataOrderApplication2001 {
+    public static void main(String[] args) {
+        SpringApplication.run(SeataOrderApplication2001.class, args);
+    }
+}
+```
+
+
+
+##### 11、启动订单服务2001看有无报错
+
+
+
+唉，踩了很多坑，订单服务 2001 总算是起来了
+
+![image-20210607232921354](SpringCloud.assets/image-20210607232921354.png)
+
+
+
+#### 2、新建库存工程 Storage-Module
+
+
+
+#### 3、新建账户工程 Account-Module
+
+
+
+
+
+
+
+### 4、Seata-1.3.0 版本踩坑记录
+
+
+
+#### 1、启动报错 ClassNotFoundException SeataAutoDataSourceProxyCreator
+
+
+
+##### 1、问题错误原因分析：
+
+
+
+详细错误信息如下：
+
+```ABAP
+Caused by: java.lang.NoClassDefFoundError: io/seata/spring/annotation/datasource/SeataAutoDataSourceProxyCreator
+	at java.lang.Class.getDeclaredMethods0(Native Method) ~[na:1.8.0_271]
+	at java.lang.Class.privateGetDeclaredMethods(Class.java:2701) ~[na:1.8.0_271]
+	at java.lang.Class.getDeclaredMethods(Class.java:1975) ~[na:1.8.0_271]
+	at org.springframework.util.ReflectionUtils.getDeclaredMethods(ReflectionUtils.java:463) ~[spring-core-5.2.2.RELEASE.jar:5.2.2.RELEASE]
+	... 21 common frames omitted
+Caused by: java.lang.ClassNotFoundException: io.seata.spring.annotation.datasource.SeataAutoDataSourceProxyCreator
+	at java.net.URLClassLoader.findClass(URLClassLoader.java:382) ~[na:1.8.0_271]
+	at java.lang.ClassLoader.loadClass(ClassLoader.java:418) ~[na:1.8.0_271]
+	at sun.misc.Launcher$AppClassLoader.loadClass(Launcher.java:355) ~[na:1.8.0_271]
+	at java.lang.ClassLoader.loadClass(ClassLoader.java:351) ~[na:1.8.0_271]
+	... 25 common frames omitted
+```
+
+
+
+>   问题分析：因为 seata-all 版本不对
+
+官网推荐 POM 文件
+
+```xml
+<dependency>
+    <groupId>io.seata</groupId>
+    <artifactId>seata-spring-boot-starter</artifactId>
+    <version>1.3.0</version>
+</dependency>
+<dependency>
+    <groupId>com.alibaba.cloud</groupId>
+    <artifactId>spring-cloud-starter-alibaba-seata</artifactId>
+    <version>2.2.1.RELEASE</version>
+    <exclusions>
+        <exclusion>
+            <groupId>io.seata</groupId>
+            <artifactId>seata-spring-boot-starter</artifactId>
+        </exclusion>
+    </exclusions>
+</dependency>
+```
+
+
+
+但是由于 seata-spring-boot-starter 所包含的 seata-all 并不是对应最新的 1.3 版本，导致 ClassNotFoundException
+
+
+
+![image-20210607185611804](SpringCloud.assets/image-20210607185611804.png)
+
+
+
+##### 2、解决方案
+
+
+
+>   排除掉 seata-spring-boot-starter 依赖的旧版本 seata-all，自己重新添加需要的 seata-all 版本
+
+```xml
+<dependency>
+    <groupId>com.alibaba.cloud</groupId>
+    <artifactId>spring-cloud-starter-alibaba-seata</artifactId>
+    <version>2.2.1.RELEASE</version>
+    <exclusions>
+        <exclusion>
+            <groupId>io.seata</groupId>
+            <artifactId>seata-spring-boot-starter</artifactId>
+        </exclusion>
+    </exclusions>
+</dependency>
+
+<dependency>
+    <groupId>io.seata</groupId>
+    <artifactId>seata-spring-boot-starter</artifactId>
+    <version>1.3.0</version>
+    <exclusions>
+        <exclusion>
+            <groupId>io.seata</groupId>
+            <artifactId>seata-all</artifactId>
+        </exclusion>
+    </exclusions>
+</dependency>
+
+<dependency>
+    <groupId>io.seata</groupId>
+    <artifactId>seata-all</artifactId>
+    <version>1.3.0</version>
+</dependency>
+```
+
+
+
+#### 2、启动报错 Could not resolve placeholder 'mybatis.mapperLocations'
+
+
+
+##### 1、报错原因分析
+
+
+
+详细报错信息如下：
+
+>   Could not resolve placeholder 'mybatis.mapperLocations' in value "${mybatis.mapperLocations}"
+
+```ABAP
+Caused by: java.lang.IllegalArgumentException: Could not resolve placeholder 'mybatis.mapperLocations' in value "${mybatis.mapperLocations}"
+	at org.springframework.util.PropertyPlaceholderHelper.parseStringValue(PropertyPlaceholderHelper.java:178) ~[spring-core-5.2.2.RELEASE.jar:5.2.2.RELEASE]
+	at org.springframework.util.PropertyPlaceholderHelper.replacePlaceholders(PropertyPlaceholderHelper.java:124) ~[spring-core-5.2.2.RELEASE.jar:5.2.2.RELEASE]
+	at org.springframework.core.env.AbstractPropertyResolver.doResolvePlaceholders(AbstractPropertyResolver.java:236) ~[spring-core-5.2.2.RELEASE.jar:5.2.2.RELEASE]
+	at org.springframework.core.env.AbstractPropertyResolver.resolveRequiredPlaceholders(AbstractPropertyResolver.java:210) ~[spring-core-5.2.2.RELEASE.jar:5.2.2.RELEASE]
+	at org.springframework.context.support.PropertySourcesPlaceholderConfigurer.lambda$processProperties$0(PropertySourcesPlaceholderConfigurer.java:175) ~[spring-context-5.2.2.RELEASE.jar:5.2.2.RELEASE]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.resolveEmbeddedValue(AbstractBeanFactory.java:908) ~[spring-beans-5.2.2.RELEASE.jar:5.2.2.RELEASE]
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1228) ~[spring-beans-5.2.2.RELEASE.jar:5.2.2.RELEASE]
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1207) ~[spring-beans-5.2.2.RELEASE.jar:5.2.2.RELEASE]
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.inject(AutowiredAnnotationBeanPostProcessor.java:640) ~[spring-beans-5.2.2.RELEASE.jar:5.2.2.RELEASE]
+	at org.springframework.beans.factory.annotation.InjectionMetadata.inject(InjectionMetadata.java:116) ~[spring-beans-5.2.2.RELEASE.jar:5.2.2.RELEASE]
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:399) ~[spring-beans-5.2.2.RELEASE.jar:5.2.2.RELEASE]
+	... 140 common frames omitted
+```
+
+
+
+查看 DataSourceProxyConfig 数据源代理配置类，原来的写法如下：
+
+```java
+@Value("${mybatis.mapperLocations}")
+private String mapperLocations;
+```
+
+
+
+##### 2、解决方案
+
+
+
+我们查看 yml 中的 mybatis 相关配置、将 mapper-locations 的值暂且先硬编码写入到 Value 中吧
+
+```java
+// 写死这个
+@Value("classpath*:mapper/*.xml")
+private String mapperLocations;
+```
+
+![image-20210607222136569](SpringCloud.assets/image-20210607222136569.png)
+
+
+
+#### 3、代理 MyBatis 的数据源后实体类别名包解析失败
+
+
+
+##### 1、报错原因分析
+
+
+
+>   Could not resolve type alias 'Order'.  Cause: java.lang.ClassNotFoundException: Cannot find class: Order
+
+```ABAP
+Caused by: org.apache.ibatis.type.TypeException: Could not resolve type alias 'Order'.  Cause: java.lang.ClassNotFoundException: Cannot find class: Order
+	at org.apache.ibatis.type.TypeAliasRegistry.resolveAlias(TypeAliasRegistry.java:120) ~[mybatis-3.4.4.jar:3.4.4]
+	at org.apache.ibatis.builder.BaseBuilder.resolveAlias(BaseBuilder.java:149) ~[mybatis-3.4.4.jar:3.4.4]
+	at org.apache.ibatis.builder.BaseBuilder.resolveClass(BaseBuilder.java:116) ~[mybatis-3.4.4.jar:3.4.4]
+	... 80 common frames omitted
+Caused by: java.lang.ClassNotFoundException: Cannot find class: Order
+	at org.apache.ibatis.io.ClassLoaderWrapper.classForName(ClassLoaderWrapper.java:200) ~[mybatis-3.4.4.jar:3.4.4]
+	at org.apache.ibatis.io.ClassLoaderWrapper.classForName(ClassLoaderWrapper.java:89) ~[mybatis-3.4.4.jar:3.4.4]
+	at org.apache.ibatis.io.Resources.classForName(Resources.java:261) ~[mybatis-3.4.4.jar:3.4.4]
+	at org.apache.ibatis.type.TypeAliasRegistry.resolveAlias(TypeAliasRegistry.java:116) ~[mybatis-3.4.4.jar:3.4.4]
+	... 82 common frames omitted
+```
+
+
+
+##### 2、解决方案
+
+
+
+检查 DataSourceProxyConfig 数据源代理类，我们发现代理对象需要重新设置 MyBatis 在 yml 中的配置规则
+
+>   我们增加别名的字段，以及在 sqlSessionFactoryBean() 方法中添加设置别名代码
+
+```java
+@Value("com.lee.springcloud.entities")
+private String typeAliasesPackage;
+
+@Bean
+public SqlSessionFactory sqlSessionFactoryBean(DataSourceProxy dataSourceProxy) throws Exception {
+    SqlSessionFactoryBean sqlSessionBean = new SqlSessionFactoryBean();
+    sqlSessionBean.setDataSource(dataSourceProxy);
+    //加载 MyBatis 的 mapper.xml 配置
+    sqlSessionBean.setMapperLocations(new PathMatchingResourcePatternResolver().getResources(mapperLocations));
+    sqlSessionBean.setTransactionFactory(new SpringManagedTransactionFactory());
+    //设置别名
+    sqlSessionBean.setTypeAliasesPackage(typeAliasesPackage);
+    return sqlSessionBean.getObject();
+}
+```
+
+
+
+
+
+
+
+
+
+## 45、完结篇 大厂面试之雪花算法（上）
 
 
 
@@ -13613,37 +15161,12 @@ Saga 模式是 Seata 提供的长事务解决方案，在 Saga 模式中，业�
 
 
 
-## 44、分布式事务 Seate 实战配置
 
 
 
 
 
-
-
-
-
-
-
-
-
-## 45、完结篇 大厂面试第三季预告之雪花算法（上）
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## 46、完结篇 大厂面试第三季预告之雪花算法（下）
+## 46、完结篇 大厂面试之雪花算法（下）
 
 
 
