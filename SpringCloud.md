@@ -13249,21 +13249,11 @@ Seata 是一款开源的分布式事务解决方案，致力于提供高性能�
 
 
 
->   TM：业务模块中全局事务的开启者
->
->   -   向TC开启一个全局事务
->   -   调用其它微服务
->
->   RM：业务模块执行者中，包含 RM 部分，负责向 TC 汇报事务执行状态。
->
->   -   执行本地事务
->   -   向 TC 注册分支事务，并提交本地事务执行结果
->
->   TM：结束对微服务的调用，通知 TC，全局事务执行完毕，事务─阶段结束
->
->   TC：汇总各个分支事务执行结果，决定分布式事务是提交还是回滚
->
->   TC：通知所有 RM 提交/回滚 资源，事务二阶段结束
+>   -   TM开启分布式事务（TM向TC注册全局事务记录)
+>   -   按业务场景，编排数据库、服务等事务内资源（RM向TC汇报资源准备状态）
+>   -   TM结束分布式事务，事务一阶段结束（TM通知TC提交/回滚分布式事务）
+>   -   TC汇总事务信息，决定分布式事务是提交还是回滚
+>   -   TC通知所有RM提交/回滚资源，事务二阶段结束
 
 
 
@@ -13316,9 +13306,32 @@ Seata 是一款开源的分布式事务解决方案，致力于提供高性能�
 两阶段提交协议的演变：
 
 -   一阶段：业务数据和回滚日志记录在同一个本地事务中提交，释放本地锁和连接资源
+
+>   在一阶段中：Seata 会拦截 业务 SQL
+>
+>   -   解析SQL语义：找到业务SQL要更新的业务数据. 在业务数据被更新前. 将其保存成 before image [前置镜像]
+>   -   执行 “业务SQL” 更新业务数据，在业务数据更新之后
+>   -   其保存成 after image，最后生成行锁
+>
+>   以上操作全部在一个数据库事务内完成，这样保证了一阶段操作的原子性
+>
+>   ![image-20210609154811225](SpringCloud.assets/image-20210609154811225.png)
+
 -   二阶段：
     -   提交异步化，非常快速地完成
     -   回滚通过一阶段的回滚日志进行反向补偿
+
+>   二阶段如果顺利的话、因为 业务 SQL 在一阶段已经提交至数据库了，所以 Seata 框架只需要将**一阶段保存的快照数据和行锁删除，完成数据清理即可**
+>
+>   ![image-20210609155232986](SpringCloud.assets/image-20210609155232986.png)
+
+>   二阶段如果是回滚的话，Seata 就需要回滚一阶段已经执行的“业务SQL”，还原业务数据
+>
+>   回滚方式便是用 “before image” 还原业务数据;但在还原前要首先要校验脏写，对比 “数据库当前业务数据” 和 “after image”
+>
+>   如果两份数据完全一致就说明没有脏写，可以还原业务数据，如果不一致就说明有脏写，出现脏写就需要转人工处理
+>
+>   ![image-20210609155537933](SpringCloud.assets/image-20210609155537933.png)
 
 
 
@@ -13734,12 +13747,10 @@ store {
 
   ## database store property
   db {
-    ## the implement of javax.sql.DataSource, such as DruidDataSource(druid)/BasicDataSource(dbcp)/HikariDataSource(hikari) etc.
-    datasource = "druid"
+    # 修改项 --------------Start------------------
     ## mysql/oracle/postgresql/h2/oceanbase etc.
     dbType = "mysql"
     driverClassName = "com.mysql.jdbc.Driver"
-    # 修改项 --------------Start------------------
     # 自己的 mysql 连接地址
     url = "jdbc:mysql://192.168.1.166:3306/seata"
     # mysql 用户名
@@ -13747,13 +13758,6 @@ store {
     # mysql 密码
     password = "Lee193654300_"
     # 修改项 ----------------End----------------
-    minConn = 5
-    maxConn = 30
-    globalTable = "global_table"
-    branchTable = "branch_table"
-    lockTable = "lock_table"
-    queryLimit = 100
-    maxWait = 5000
   }
 }
 ```
@@ -13897,6 +13901,8 @@ store.db.password=Lee193654300_
 >   service.vgroup_mapping.**${your-service-name}**-group=default：中间的 .${your-service-name} 为自己定义的微服务名称，SpringBlade 默认为 service-name-group 的格式
 
 官方解释为事务群组，具体使用多少个事务群体没有明确指出。但通过查看文档和部分开源项目发现，大多都采用将**key 值设置为服务端的服务名**，有多少个微服务就添加多少行。在接下来的 demo 中要使用三个微服务作为示例，因此添加：以下将要采用为微服务的名称，并在 conf.txt 中添加以下三行配置
+
+**注意：想要使用事务需要将这三条配置的值都设置成一样的，例如以下为 default**
 
 ```properties
 service.vgroupMapping.seata-order-service-group=default
@@ -14090,7 +14096,7 @@ service network restart
 
 
 
-## 44、分布式事务 Seata 实战配置
+## 44、分布式事务 Seata (AT) 实战配置
 
 
 
@@ -14252,7 +14258,7 @@ CREATE TABLE `undo_log` (
 
 
 
->   新建完整工程名： seata-order-service2001
+>   新建订单微服务： seata-order-service2001
 
 
 
@@ -14532,6 +14538,8 @@ public class CommonResult<T> {
 
 
 
+###### 1、Dao 层接口
+
 >   创建订单需要两个基础方法
 >
 >   -   创建订单
@@ -14560,6 +14568,40 @@ public interface OrderDao {
      */
     void updateOrderById(@Param("userId") Long userId, @Param("status") Integer status);
 }
+```
+
+###### 2、Dao 层对应的 Mapper.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lee.springcloud.dao.OrderDao">
+
+    <resultMap id="BaseResultMap" type="com.lee.springcloud.entities.Order">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
+        <result column="product_id" property="productId" jdbcType="BIGINT"/>
+        <result column="count" property="count" jdbcType="INTEGER"/>
+        <result column="money" property="money" jdbcType="DECIMAL"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <!--
+        useGeneratedKeys 插入成功返回主键
+        keyProperty 指定主键是谁，指定后插入主键就不用显示写了
+        -->
+    <insert id="createOrder" parameterType="Order" useGeneratedKeys="true" keyProperty="id">
+         insert into t_order (user_id, product_id, count, money, status)
+           values (#{userId}, #{productId}, #{count}, #{money}, 0);
+    </insert>
+
+    <update id="updateOrderById">
+         update t_order set status = 1 where user_id = #{userId} and status = #{status}
+    </update>
+</mapper>
 ```
 
 
@@ -14641,7 +14683,7 @@ public interface StorageService {
 }
 ```
 
-4、编写 OrderServiceImpl 的实现类
+###### 4、编写 OrderServiceImpl 的实现类
 
 >   创建订单的业务流程如下
 
@@ -14924,11 +14966,389 @@ public class SeataOrderApplication2001 {
 
 
 
+>   新建库存微服务： seata-storage-service2002
+
+
+
+##### 1、改 POM
+
+-    POM 的引用参考 订单微服务 2001，两者 一样
+
+##### 2、编写 YML
+
+-   YML 大体也一样，注意以下几点
+-   修改 微服务名称
+-   修改 MySQL 链接、因为使用的 db 库不一样，记得修改
+
+##### 3、编写 entities
+
+-   CommonResult 的 编写和 2001 一样，这里省略，也可以提取成公用的工程，这里省略
+-   以下是 Storage 实体类的代码
+
+```java
+package com.lee.springcloud.entities;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.io.Serializable;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Storage implements Serializable {
+    // ID
+    private Long id;
+    // 产品ID
+    private Long productId;
+    // 总库存
+    private Integer total;
+    // 已用库存
+    private Integer used;
+    // 剩余库存
+    private Integer residue;
+}
+```
+
+
+
+##### 4、Dao 接口和实现
+
+
+
+###### 1、Dao 层接口
+
+```java
+package com.lee.springcloud.dao;
+
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+
+@Mapper
+public interface StorageDao {
+
+    /**
+     * 扣减库存
+     * @param productId
+     * @param count
+     */
+    void decreaseStock(@Param("productId") Long productId, @Param("count") Integer count);
+}
+```
+
+###### 2、Dao 层对应的 Mapper.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lee.springcloud.dao.StorageDao">
+
+    <resultMap id="BaseResultMap" type="com.lee.springcloud.entities.Storage">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="product_id" property="productId" jdbcType="BIGINT"/>
+        <result column="total" property="total" jdbcType="INTEGER"/>
+        <result column="used" property="used" jdbcType="INTEGER"/>
+        <result column="residue" property="residue" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <update id="decreaseStock">
+         update t_storage set used = used + #{count}, residue = residue - #{count} where product_id = #{productId}
+    </update>
+</mapper>
+```
+
+
+
+##### 5、Service 接口和实现
+
+###### 1、接口如下
+
+```java
+package com.lee.springcloud.service;
+
+public interface StorageService {
+
+    /**
+     * 扣减库存
+     * @param productId
+     * @param count
+     */
+    void decreaseStock(Long productId, Integer count);
+}
+```
+
+###### 2、实现类如下
+
+```java
+package com.lee.springcloud.service.impl;
+
+import com.lee.springcloud.dao.StorageDao;
+import com.lee.springcloud.service.StorageService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import javax.annotation.Resource;
+
+@Slf4j
+@Service
+public class StorageServiceImpl implements StorageService {
+
+    @Resource
+    private StorageDao storageDao;
+
+    @Override
+    public void decreaseStock(Long productId, Integer count) {
+        storageDao.decreaseStock(productId, count);
+        log.info(" ------------------> 库存微服务 => 扣减库存已经完成");
+    }
+}
+```
+
+
+
+##### 6、编写 Controller
+
+```java
+package com.lee.springcloud.controller;
+
+import com.lee.springcloud.entities.CommonResult;
+import com.lee.springcloud.service.StorageService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import javax.annotation.Resource;
+
+@Slf4j
+@RestController
+public class StorageController {
+
+    @Resource
+    private StorageService storageService;
+
+    /**
+     * 根据产品减库存操作
+     *
+     * @param productId 产品 ID
+     * @param count     数量
+     * @return
+     */
+    @PostMapping(value = "/storage/decreaseStock")
+    public CommonResult decreaseStock(@RequestParam("productId") Long productId, @RequestParam("count") Integer count) {
+        storageService.decreaseStock(productId, count);
+        return new CommonResult(200, "扣减库存数量：" + count + " 已经完成");
+    }
+}
+```
+
+
+
+##### 7、Config配置类
+
+-   Swagger 配置类 SwaggerConfig.java
+-   数据源代理类：DataSourceProxyConfig.java
+
+##### 8、编写主启动类
+
+-   参考订单服务 2001 ，一样，不多介绍
+
+
+
 #### 3、新建账户工程 Account-Module
 
 
 
+>   新建库存微服务： seata-account-service2003
 
+
+
+##### 1、改 POM
+
+-    POM 的引用参考 订单微服务 2001，两者 一样
+
+##### 2、编写 YML
+
+-   YML 大体也一样，注意以下几点
+-   修改 微服务名称
+-   修改 MySQL 链接、因为使用的 db 库不一样，记得修改
+
+##### 3、编写 entities
+
+-   CommonResult 的 编写和 2001 一样，这里省略，也可以提取成公用的工程，这里省略
+-   以下是 Account 实体类的代码
+
+```java
+package com.lee.springcloud.entities;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.io.Serializable;
+import java.math.BigDecimal;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Account implements Serializable {
+
+    // ID
+    private Integer id;
+    // 用户ID
+    private Long userId;
+    // 总额度
+    private BigDecimal totalMoney;
+    // 已用额度
+    private BigDecimal usedMoney;
+    // 剩余可用额度
+    private BigDecimal residueMoney;
+}
+```
+
+
+
+##### 4、Dao 接口和实现
+
+
+
+###### 1、Dao 层接口
+
+```java
+package com.lee.springcloud.dao;
+
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import java.math.BigDecimal;
+
+@Mapper
+public interface AccountDao {
+
+    void decreaseMoney(@Param("userId") Long userId, @Param("money") BigDecimal money);
+}
+```
+
+###### 2、Dao 层对应的Mapper.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lee.springcloud.dao.AccountDao">
+
+    <resultMap id="BaseResultMap" type="com.lee.springcloud.entities.Account">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
+        <result column="total" property="totalMoney" jdbcType="DECIMAL"/>
+        <result column="used" property="usedMoney" jdbcType="DECIMAL"/>
+        <result column="residue" property="residueMoney" jdbcType="DECIMAL"/>
+    </resultMap>
+
+    <update id="decreaseMoney">
+         update t_account set used = used + #{money}, residue = residue - #{money} where user_id = #{userId}
+    </update>
+</mapper>
+```
+
+
+
+##### 5、Service 接口和实现
+
+###### 1、接口如下
+
+```java
+package com.lee.springcloud.service;
+
+import java.math.BigDecimal;
+
+public interface AccountService {
+
+    void decreaseMoney(Long userId, BigDecimal money);
+}
+```
+
+###### 2、实现如下
+
+```java
+package com.lee.springcloud.service.impl;
+
+import com.lee.springcloud.dao.AccountDao;
+import com.lee.springcloud.service.AccountService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import javax.annotation.Resource;
+import java.math.BigDecimal;
+
+@Slf4j
+@Service
+public class AccountServiceImpl implements AccountService {
+
+    @Resource
+    private AccountDao accountDao;
+
+    @Override
+    public void decreaseMoney(Long userId, BigDecimal money) {
+        accountDao.decreaseMoney(userId, money);
+        log.info(" ------------------> 账户微服务 => 扣减余额已经完成");
+    }
+}
+```
+
+
+
+##### 6、编写 Controller
+
+```java
+package com.lee.springcloud.controller;
+
+import com.lee.springcloud.entities.CommonResult;
+import com.lee.springcloud.service.AccountService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import javax.annotation.Resource;
+import java.math.BigDecimal;
+
+@Slf4j
+@RestController
+public class AccountController {
+
+    @Resource
+    private AccountService accountService;
+
+    @PostMapping("/account/decreaseMoney")
+    public CommonResult decreaseMoney(@RequestParam("userId") Long userId, @RequestParam("money") BigDecimal money){
+        accountService.decreaseMoney(userId, money);
+        return new CommonResult(200, "扣减账户金额：" + money + " 已经完成");
+    }
+}
+```
+
+
+
+##### 7、Config配置类
+
+-   Swagger 配置类 SwaggerConfig.java
+-   数据源代理类：DataSourceProxyConfig.java
+
+##### 8、编写主启动类
+
+-   参考订单服务 2001 ，一样，不多介绍
+
+
+
+#### 4、启动三个微服务模块进行测试
+
+>   该步骤自测、这里省略
 
 
 
@@ -15123,7 +15543,9 @@ Caused by: java.lang.ClassNotFoundException: Cannot find class: Order
 
 检查 DataSourceProxyConfig 数据源代理类，我们发现代理对象需要重新设置 MyBatis 在 yml 中的配置规则
 
->   我们增加别名的字段，以及在 sqlSessionFactoryBean() 方法中添加设置别名代码
+>   我们增加别名的字段解析，需要在 sqlSessionFactoryBean() 方法中添加设置别名代码
+>
+>   sqlSessionBean.setTypeAliasesPackage(typeAliasesPackage);
 
 ```java
 @Value("com.lee.springcloud.entities")
@@ -15144,9 +15566,245 @@ public SqlSessionFactory sqlSessionFactoryBean(DataSourceProxy dataSourceProxy) 
 
 
 
+### 5、Seata 之 @GlobalTransactional 验证
 
 
 
+#### 1、分布式事务问题再现
+
+
+
+>   无疑：我们来分析订单微服务 2001 创建订单的业务代码
+>
+>   -   创建订单四个步骤，其中还调用了远程的另外两个服务，如果其中有一个接口调用失败抛出了异常，那么肯定先执行的代码已经对数据做了修改，那么数据肯定是不一致的，下面我们来重现分布式事务问题
+
+
+
+##### 1、修改账户服务 2003 的接口
+
+
+
+-   在该服务的 Service 层的 扣减金额接口中，添加线程休眠 5 秒中
+-   我们采用的 OpenFeign 远程调用，默认超时时间是 1 秒钟，超过这个时间就会报超时异常
+
+```java
+@Slf4j
+@Service
+public class AccountServiceImpl implements AccountService {
+
+    @Resource
+    private AccountDao accountDao;
+
+    @Override
+    public void decreaseMoney(Long userId, BigDecimal money) {
+        // 线程休眠 5 秒
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        accountDao.decreaseMoney(userId, money);
+        log.info(" ------------------> 账户微服务 => 扣减余额已经完成");
+    }
+}
+```
+
+
+
+##### 2、我们先检查一下数据状态
+
+-   订单表为空
+-   库存和账户表也都是初始数据
+
+![image-20210609141824992](SpringCloud.assets/image-20210609141824992.png)
+
+
+
+##### 3、重启账户服务 2003 进行测试
+
+
+
+>   我们传入以下参数进行测试
+>
+>   http://localhost:2001/order/createOrder?count=5&money=10&productId=1&userId=1
+
+-   count = 5
+-   money = 10
+-   productId = 1
+-   userId = 1
+
+![image-20210609142215870](SpringCloud.assets/image-20210609142215870.png)
+
+
+
+##### 4、测试发现问题如下
+
+
+
+1、Swagger 接口返回 500
+
+```asciiarmor
+{
+  "timestamp": "2021-06-09T06:22:38.535+0000",
+  "status": 500,
+  "error": "Internal Server Error",
+  "message": "Read timed out executing POST http://seata-account-service/account/decreaseMoney?userId=1&money=10",
+  "path": "/order/createOrder"
+}
+```
+
+
+
+2、我们查看 订单服务后台 发现报错 Read timed out
+
+>   这是 OpenFeign 的超时机制引发的异常，默认 1 秒，但是账户服务却休眠了 5 秒
+
+```ABAP
+java.net.SocketTimeoutException: Read timed out
+	at java.net.SocketInputStream.socketRead0(Native Method) ~[na:1.8.0_271]
+	at java.net.SocketInputStream.socketRead(SocketInputStream.java:116) ~[na:1.8.0_271]
+	at java.net.SocketInputStream.read(SocketInputStream.java:171) ~[na:1.8.0_271]
+	at java.net.SocketInputStream.read(SocketInputStream.java:141) ~[na:1.8.0_271]
+	at com.alibaba.cloud.seata.feign.SeataFeignClient.execute(SeataFeignClient.java:59) ~[spring-cloud-starter-alibaba-seata-2.2.1.RELEASE.jar:2.2.1.RELEASE]
+	at org.springframework.cloud.openfeign.ribbon.FeignLoadBalancer.execute(FeignLoadBalancer.java:93) ~[spring-cloud-openfeign-core-2.2.1.RELEASE.jar:2.2.1.RELEASE]
+	at org.springframework.cloud.openfeign.ribbon.FeignLoadBalancer.execute(FeignLoadBalancer.java:56) ~[spring-cloud-openfeign-core-2.2.1.RELEASE.jar:2.2.1.RELEASE]
+```
+
+
+
+3、查看了 三个微服务后台日志，只有订单服务报错了，其它微服务正常执行
+
+-   订单服务 2001 后台日志
+
+```ABAP
+------------------> 订单微服务：创建订单完成
+------------------> 订单微服务 => 调用库存微服务 扣减库存已完成
+2021-06-09 14:22:38.531 ERROR 17292 --- [io-2001-exec-10] o.a.c.c.C.[.[.[/].[dispatcherServlet]    : Servlet.service() for servlet [dispatcherServlet] in context with path [] threw exception [Request processing failed; nested exception is feign.RetryableException: Read timed out executing POST http://seata-account-service/account/decreaseMoney?userId=1&money=10] with root cause
+
+java.net.SocketTimeoutException: Read timed out
+	at java.net.SocketInputStream.socketRead0(Native Method) ~[na:1.8.0_271]
+	at java.net.SocketInputStream.socketRead(SocketInputStream.java:116) ~[na:1.8.0_271]
+	at java.net.SocketInputStream.read(SocketInputStream.java:171) ~[na:1.8.0_271]
+	at java.net.SocketInputStream.read(SocketInputStream.java:141) ~[na:1.8.0_271]
+	at java.io.BufferedInputStream.fill(BufferedInputStream.java:246) ~[na:1.8.0_271]
+	..........
+```
+
+-   库存服务 2002 后台日志
+
+```apl
+INFO: log base dir is: C:\Users\19365\logs\csp\
+INFO: log name use pid is: false
+------------------> 库存微服务 => 扣减库存已经完成
+```
+
+-   账户服务 2003 后台日志
+
+```apl
+INFO: log base dir is: C:\Users\19365\logs\csp\
+INFO: log name use pid is: false
+------------------> 账户微服务 => 扣减余额已经完成
+```
+
+-   检查数据库数据状态
+
+![image-20210609143305334](SpringCloud.assets/image-20210609143305334.png)
+
+
+
+##### 5、数据不一致问题总结分析
+
+
+
+先湖回顾一下创建订单流程：
+
+1.  订单服务 向订单表插入一条订单
+2.  订单服务 调用 库存服务 修改商品库存信息
+3.  订单服务 调用 账户服务 修改账户余额信息
+4.  订单服务 修改自己的订单状态为 1 - 已创建 
+
+>   为什么订单状态为未创建模式？
+
+-   答：因为订单服务的 Service 中做了四部操作，其中第三步修改余额信息时候在订单服务中抛出了超时异常，阻断了后续的代码执行，修改订单状态的代码没执行、所以订单属于未创建模式
+
+>   为什么第3步：订单服务 调用 账户服务修改账户余额的时候发生异常了，账户余额还是能修改成功？
+
+-   答：虽然订单服务因为 OpenFeign 抛出了超时异常阻断了订单服务的后续代码执行，但是本身账户服务的业务是没有发生异常的，只是休眠了5 秒，后续的执行账户余额代码还是 5 秒后能够执行
+
+>   **还有个问题：因为 feign 的超时重试机制，账户余额还有可能被多次扣减**
+
+-   所以为了解决以上的问题，我们继续往下看
+
+
+
+#### 2、使用 Seata 进行分布式事务控制
+
+
+
+>   我们可以利用 @GlobalTransactional 来控制分布式事务的提交和回滚
+>
+>   我们可以利用以下步骤进行修改
+
+
+
+-   只需要在订单服务 2001 的业务类中加入 @GlobalTransactional
+
+```java
+    @Override
+    /**
+     * name：全局唯一就行了
+     * rollbackFor = Exception.class ：只要发生了异常，统统进行回滚操作
+     */
+    @GlobalTransactional(name = "seata-create-order", rollbackFor = Exception.class)
+    public boolean createOrder(Order order) {
+
+        orderDao.createOrder(order);
+        log.info(" ------------------> 订单微服务：创建订单完成");
+
+        storageService.decreaseStock(order.getProductId(), order.getCount());
+        log.info(" ------------------> 订单微服务 => 调用库存微服务 扣减库存已完成");
+
+        accountService.decreaseMoney(order.getUserId(), order.getMoney());
+        log.info(" ------------------> 订单微服务 => 调用账户微服务 扣减余额已完成");
+
+        /**
+         * 将订单状态修改为 1
+         *   set status = 1 where status = #{status}
+         */
+        orderDao.updateOrderById(order.getUserId(), 0);
+        log.info(" ------------------> 订单微服务 创建订单流程结束");
+
+        return true;
+    }
+```
+
+
+
+>   之后我们再次调用订单服务接口
+>
+>   http://localhost:2001/order/createOrder?count=5&money=10&productId=1&userId=1
+
+
+
+虽然 Swagger 依旧返回 500，使用 URL 测试返回 Error Page 500，后台订单接口依旧抛出超时异常
+
+```ABAP
+{
+  "timestamp": "2021-06-09T06:56:29.837+0000",
+  "status": 500,
+  "error": "Internal Server Error",
+  "message": "Read timed out executing POST http://seata-storage-service/storage/decreaseStock?productId=1&count=5",
+  "path": "/order/createOrder"
+}
+```
+
+但是我们查看数据，发现已经回滚，数据并未产生实质性修改，而且 undo_log 已经产生对应回滚记录
+
+![image-20210609150210682](SpringCloud.assets/image-20210609150210682.png)
+
+
+
+>   此时：Seata 的回滚操作已经完成，我们已经掌握了 Seata 最基本的配置和使用，后续的进阶内容可以参考官网
 
 
 
@@ -15154,15 +15812,164 @@ public SqlSessionFactory sqlSessionFactoryBean(DataSourceProxy dataSourceProxy) 
 
 
 
+### 1、为什么需要分布式全局唯一ID ?
 
 
 
+在复杂分布式系统中，往往需要对大量的数据和消息进行唯一标识、如在美团点评的金融、支付、餐饮、酒店，猫眼电影等产品的系统中数据日渐增长，对数据分库分表后需要有一个雅一ID来标识一条数据或消息;特别一点的如订单、骑手、优惠券也都需要有唯一ID做标识。此时**一个能够生成全局唯一ID的系统是非常必要的**
 
 
 
+### 2、ID 生成规则部分硬性要求
 
 
 
+#### 1、程序算法方面
+
+
+
+##### 1、全局唯一
+
+-   不能出现重读的 ID 号、既然是唯一的标识、这是最基本的要求
+
+##### 2、趋势递增
+
+-   在MySQL的InnoDB引擎中使用的是聚集索引，由于多数RDBMS使用Btree的数据结构来存储索引数据，在主键的选择上面我们应该尽量使用有序的主键保证写入性能
+
+##### 3、单调递增
+
+-   保证下一个ID一定大于上一个ID，例如事务版本号、IM增量消息、排序等特殊需求
+
+##### 4、信息安全
+
+>   浑水公司在做空 瑞幸咖啡前、就是通过瑞星咖啡每日的订单号流水、来推测到瑞幸每日的销售情况的
+
+-   如果ID是连续的，恶意用户的扒取工作就非常容易做了，直接按照顺序下载指定URL即可如果是订单号就更危险了书竞对可以直接知道我们一天的单量。所以在一些应用场景下，需要ID无规则不规则，让竞争对手不好猜
+
+##### 5、含时间戳
+
+-   这样就能够在开发中快速了解这个分布式id的生成时间
+
+
+
+#### 2、服务硬件方面
+
+
+
+##### 1、高可用
+
+-   发一个获取分布式Ib的请求，服务器就要保证 99.999% 的情况下给我创建一个唯一分布式ID
+
+##### 2、低延迟
+
+-   发一个获取分布式ID的请求，服务器就要快，极速
+
+##### 3、高OPS
+
+-   假如并发一口气10万个创建分布式ID请求同时杀过来，服务器要顶的住且一下子成功创建10万
+
+
+
+### 3、分布式唯一ID 一般通用方案
+
+
+
+#### 1、UUID
+
+
+
+##### 1、UUID 简单介绍
+
+>   UUID (Universally Unique ldentifier) 的标准型式包含 32 个 16 进制数字，以连字号分为五段
+>
+>   形式为8-4-4-4-12的36个字符，示例：550e8400-e29b-41d4-a716-446655440000 
+
+##### 2、UUID 优点
+
+-   性能非常高:本地生成，没有网络消耗
+-   如果只考虑唯一性，那是 OK 的
+
+
+
+##### 3、UUID 缺点
+
+-   UUID 是无序的，如数据库性能比较差，而且不能索引、索引要求有序
+
+
+
+>   无序，无法预测他的生成顺序、不能生成递增有序的数字
+
+-   首先分布式 id 一般都会作为主键，但是安装 mysql 官方推荐主键要尽量越短越好，UUID 每一个都很长，所以不是很推荐
+
+>   UUID 作为主键时在特定的环境会存在一些问题
+
+-   比如做 DB 主键的场景下，UUID 就非常不适用 MySQL 官方有明确的建议主键要尽量越短越好 36 个字符长度的UUID 不符合要求、除了聚集索引之外的所有索引都称为二级索引。在 InnoDB 中，次级索引中的每条记录都包含该行的主键列，以及为次要索引指定的列。InnoDB 使用这个主键值在聚集索引中搜索一行，如果主键很长，次级索引会占用更多的空间，所以有一个短的主键是有利的
+
+>   索引、B+Tree 索引的分裂
+
+-   既然分布式 id 是主键，然后主键是包含索引的，然后 mysql 的索引是通过b+树来实现的，每一次新的 UUID 数据的插入，为了查询的优化，都会对索引底层的 b+ 树进行修改，因为 UUID 数据是无序的，所以每一次 UUID 数据的插入都会对主键地城的 b+ 树进行很大的修改，这一点很不好。插入完全无序，不但会导致一些中间节点产生分裂，也会白白创造出很多不饱和的节点，这样大大降低了数据库插入的性能
+
+>   UUID 对于 5 个分布式 ID 的硬性要求只满足一个，那就是 唯一性，其它均不满足
+
+
+
+#### 2、数组库自增主键
+
+
+
+##### 1、MySQL 自增主键介绍
+
+
+
+>   在分布式里面，数据库的自增 ID 机制的主要原因是：数据库自增 ID 和 MySQL 数据库的 Replace into 实现的
+>
+>   这里的 replace into 跟 insert 功能类似、不同点在于 replace into 首先尝试插入数据列表中，如果发现表中已经有此行数据（根据主键或唯一索引判断）则先删除，再插入否则直接插入新数据
+>
+>   **Replace Info 的含义：插入一套记录、如果表中唯一索引的值遇到冲突、则替换老数据**
+
+
+
+##### 2、那适合做分布式 ID 吗？
+
+
+
+不太合适、系统水平扩展比较困难，比如定义好了步长和机器台数之后，如果要添加机器该怎么做?假设现在只有一台机器发号是1.2.3.4.5 (步长是1)，这个时候需要扩容机器一台。可以这样做:把第二台机器的初始值设置待比第一台超过很多，貌似还好，现在想象一下如果我们线上有 10 台机器，这个时候要扩容该怎么做?简直是噩梦。所以系统水平扩展方案复杂难以实现
+
+而且数据库压力还是很大，每次获取ID都得读写一次数据库，非常影响性能，不符合分布式ID里面的延迟低和要高QPS的规则 (在高并发下、如果都去数据库里面获取id，那是非常影响性能的)
+
+
+
+#### 3、基于 Redis 生成全局 ID 策略
+
+
+
+##### 1、Redis 生成全局 ID 介绍
+
+
+
+>   因为 Redis (最新版支持多线程了) 是单线程的、天生保证原子性，可以使用原子操作 INCR 和 INCRBY 来实现
+
+
+
+##### 2、Redis 集群分布式
+
+
+
+>   注意：在 Redis 集群情况下，同样和 MySQL 一样需要设置不同的增长步长，同时 key 一定要设置有效期
+
+可以使用 Redis 集群来获取更高的吞吐量、假如一个集群中有 5 台 Redis、可以初始化每台 Redis 的值分别是 1, 2, 3, 4, 5,  然后步长都是 5，那么各个 Redis 生成的 ID 如下：
+
+-   A：1, 6, 11, 16, 21
+-   B：2, 7, 12, 17, 22
+-   C：3, 8, 13, 18 ,23
+-   D：4, 9, 14, 19, 24
+-   E：5, 10, 15, 20, 25
+
+>   缺点：配置啰嗦、维护麻烦、5 台 Redis 都需要维护
+
+
+
+**上面说了那么多，各有各的优缺点和痛点、引入我们今天的主角了 Snowflake、我们继续往下看**
 
 
 
@@ -15170,7 +15977,461 @@ public SqlSessionFactory sqlSessionFactoryBean(DataSourceProxy dataSourceProxy) 
 
 
 
+### 1、Snowflake 雪花算法介绍
+
+
+
+>   源自 Twitter 的分布式自增 ID 算法 Snowflake、一般工作中推荐使用雪花算法，以上分析的分布式全局唯一ID要么实现起来过于麻烦、维护繁琐，要么生成过于简单，只适用于单机环境
+>
+>   Github：https://github.com/twitter-archive/snowflake
+
+而 Twitter 的 snowflake 解决了这种需求，最初 Twitter 把存储系统从 MySQL 迁移到 Cassandra (由 Facebook 开发一套开源分布式 NoSQL 数据库系统) 因为 Cassandra 没有顺序 ID 生成机制，所以开发了这样一套全局唯一 ID 生成服务
+
+
+
+Twitter 的分布式雪花算法 snowflake ，经测试 snowflake 每秒能够产生 26 万个自增可排序的 ID
+
+-   twitter 的 snowflake 生成 ID 能够按照时间有序生成
+-   snowflake 算法生成id的结果是一个 64bit 大小的整数，为一个 Long 型(转换成字符串后长度最多19)
+-   分布式系统内不会产生ID碰撞（由 datacenter 和 workerld 作区分）并且效率较高
+
+
+
+分布式系统中，有一些需要使用全局唯一 ID 的场景，生成 ID 的基本要求
+
+-   在分布式的环境下必须全局且唯一
+-   一般都需要单调递增,因为一般唯一 ID 都会存到数据库、而 Innodb 的特性就是将内容存储在主键索引树上的叶子节点,而且是从左往右, 递增的、所以考虑到数据库性能, 一般生成的 id 也最好是单调递增。为了防止 ID 冲突可以使用 36 位的 UUID.
+-   可能还会需要无规则 , 因为如果使用唯一 ID 作为订单号这种,为了不然别人知道一天的订单量是多少,  就需要这个规则
+
+
+
+### 2、Snowflake  雪花算法核心组成
 
 
 
 
+
+![image-20210609173247700](SpringCloud.assets/image-20210609173247700.png)
+
+
+
+号码段解析
+
+**1bit 符号位**：
+
+>   符号位永远不用，因为二进制中最高位是符号位，1 表示负数，O 表示正数。生成的 id 一般都是用整数，所以最高位固定为0
+
+**41bit 时间戳位**：
+
+>   用来记录时间戳，毫秒级、时间范围、从 1970 年开始，用到 2039-09-07 年、这个怎么计算？
+>
+>   将 11 位的二进制 转换为 10 进制就得到了最大能表示的时间戳，将时间戳转为 Date 类型就是 2039 - 09 - 07
+>
+>   -   41 位可以表示 2 ^ {41} - 1 个数字
+>   -   如果只用来表示正整数（计算机中正数包含0），可以表示的数值范围是: 0 至 2 ^ {41} - 1，减 1 是因为可表示的数值范围是从 0 开始算的，而不是 1
+>   -   也就是说 41 位可以表示 2 ^ {41} - 1 个毫秒的值，转化成单位年则是(2^{41}-1)/(1000×60×60×24×365) = 69年
+
+**10bit 工作机器id**：
+
+>   用来记录工作机器 id、1024  个节点的计算方式其实和 时间的一样
+>
+>   -   可以部署在 2^{10} = 1024 个节点，包括 5 位 datacenterld 和 5 位 workerld
+>   -   5 位 (bit) 可以表示的最大正整数是 2 ^ {5} - 1 = 31、即可以用 0、1、2、3、.….1 这 32 个数字，来表示不同的 datecenterld 或 workerld
+
+**12bit 序列号位**：
+
+>   序列号，用来记录同毫秒内产生的不同 id
+>
+>   12 位 (bit）可以表示的最大正整数是 2 ^ {12} - 1 = 4095，即可以用0、1、2、3、..4094 这 4095 个数字，来表示同一机器同一时间截(毫秒)内产生的 4095 个 ID 序号
+
+
+
+**Snowflake 可以保证**
+
+-   所有生成的 ID 按时间趋势递增
+-   整个分布式系统内不会产生重复ID（因为由 datacenterId 和 workerId 来做区分）
+
+
+
+### 3、Snowflake Java 版代码实现
+
+
+
+```java
+public class SnowflakeIdWorker {
+    /**
+     * 工作机器ID(0~31)
+     */
+    private long workerId;
+    /**
+     * 数据中心ID(0~31)
+     */
+    private long datacenterId;
+    /**
+     * 毫秒内序列(0~4095)
+     */
+    private long sequence = 0L;
+    /**
+     * 上次生成ID的时间截
+     */
+    private long lastTimestamp = -1L;
+    /**
+     * 开始时间截 (2015-01-01)
+     */
+    private final long twepoch = 1420041600000L;
+    /**
+     * 机器id所占的位数
+     */
+    private final long workerIdBits = 5L;
+    /**
+     * 数据标识id所占的位数
+     */
+    private final long datacenterIdBits = 5L;
+    /**
+     * 支持的最大机器id，结果是31 (这个移位算法可以很快的计算出几位二进制数所能表示的最大十进制数)
+     */
+    private final long maxWorkerId = -1L ^ (-1L << workerIdBits);
+    /**
+     * 支持的最大数据标识id，结果是31
+     */
+    private final long maxDatacenterId = -1L ^ (-1L << datacenterIdBits);
+    /**
+     * 序列在id中占的位数
+     */
+    private final long sequenceBits = 12L;
+    /**
+     * 机器ID向左移12位
+     */
+    private final long workerIdShift = sequenceBits;
+    /**
+     * 数据标识id向左移17位(12+5)
+     */
+    private final long datacenterIdShift = sequenceBits + workerIdBits;
+    /**
+     * 时间截向左移22位(5+5+12)
+     */
+    private final long timestampLeftShift = sequenceBits + workerIdBits + datacenterIdBits;
+    /**
+     * 生成序列的掩码，这里为4095 (0b111111111111=0xfff=4095)
+     */
+    private final long sequenceMask = -1L ^ (-1L << sequenceBits);
+    /**
+     * 构造函数
+     * @param workerId     工作ID (0~31)
+     * @param datacenterId 数据中心ID (0~31)
+     */
+    public SnowflakeIdWorker(long workerId, long datacenterId) {
+        if (workerId > maxWorkerId || workerId < 0) {
+            throw new IllegalArgumentException(String.format("worker Id can't be greater than %d or less than 0", maxWorkerId));
+        }
+        if (datacenterId > maxDatacenterId || datacenterId < 0) {
+            throw new IllegalArgumentException(String.format("datacenter Id can't be greater than %d or less than 0", maxDatacenterId));
+        }
+        this.workerId = workerId;
+        this.datacenterId = datacenterId;
+    }
+    /**
+     * 获得下一个ID (该方法是线程安全的)
+     * @return SnowflakeId
+     */
+    public synchronized long nextId() {
+        long timestamp = timeGen();
+        // 如果当前时间小于上一次ID生成的时间戳，说明系统时钟回退过这个时候应当抛出异常
+        if (timestamp < lastTimestamp) {
+            throw new RuntimeException(
+                    String.format("Clock moved backwards.  Refusing to generate id for %d milliseconds", lastTimestamp - timestamp));
+        }
+        // 如果是同一时间生成的，则进行毫秒内序列
+        if (lastTimestamp == timestamp) {
+            sequence = (sequence + 1) & sequenceMask;
+            // 毫秒内序列溢出
+            if (sequence == 0) {
+                //阻塞到下一个毫秒,获得新的时间戳
+                timestamp = tilNextMillis(lastTimestamp);
+            }
+        }
+        // 时间戳改变，毫秒内序列重置
+        else {
+            sequence = 0L;
+        }
+        // 上次生成ID的时间截
+        lastTimestamp = timestamp;
+        // 移位并通过或运算拼到一起组成64位的ID
+        return ((timestamp - twepoch) << timestampLeftShift) //
+                | (datacenterId << datacenterIdShift) //
+                | (workerId << workerIdShift) //
+                | sequence;
+    }
+    /**
+     * 阻塞到下一个毫秒，直到获得新的时间戳
+     * @param lastTimestamp 上次生成ID的时间截
+     * @return 当前时间戳
+     */
+    protected long tilNextMillis(long lastTimestamp) {
+        long timestamp = timeGen();
+        while (timestamp <= lastTimestamp) {
+            timestamp = timeGen();
+        }
+        return timestamp;
+    }
+    /**
+     * 返回以毫秒为单位的当前时间
+     * @return 当前时间(毫秒)
+     */
+    protected long timeGen() {
+        return System.currentTimeMillis();
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        SnowflakeIdWorker idWorker = new SnowflakeIdWorker(0, 0);
+        for (int i = 0; i < 10; i++) {
+            long id = idWorker.nextId();
+            Thread.sleep(1);
+            System.out.println(id);
+        }
+    }
+}
+```
+
+
+
+### 4、Snowflake 整合工程用法
+
+
+
+#### 1、糊涂工具包
+
+
+
+>   Github官网：https://github.com/dromara/hutool
+>
+>   hutool 官方中文文档：https://www.hutool.cn/docs/#/
+
+
+
+引入 Maven 依赖-以下是导入了 hutool 所有的工具
+
+```xml
+<dependency>
+    <groupId>cn.hutool</groupId>
+    <artifactId>hutool-all</artifactId>
+    <version>5.6.7</version>
+</dependency>
+```
+
+
+
+#### 2、SpringBoot 整合 Snowflake
+
+
+
+1、我们引入以下 依赖
+
+>   其实以下依赖还是 hutool 工具包里的只不过  hutool-captcha 里面包含了雪花算法
+
+```xml
+<dependency>
+    <groupId>cn.hutool</groupId>
+    <artifactId>hutool-captcha</artifactId>
+    <version>4.6.8</version>
+</dependency>
+```
+
+
+
+2、代码中调用 API 即可
+
+-   Controller 模块
+
+```java
+@Slf4j
+@RestController
+public class OrderController {
+
+    @Resource
+    private OrderService orderService;
+
+    @PostMapping("/snowflak")
+    public String index(){
+        return orderService.getIDBySnowFlake();
+    }
+}
+```
+
+-   Service 模块
+
+```java
+@Service
+public class OrderServiceImpl implements OrderService {
+
+    @Resource
+    private TwittorSnowflake idGenerator;
+
+    @Override
+    public String getIDBySnowFlake() {
+        return idGenerator.snowflakeId();
+    }
+}
+```
+
+-   IdTwittorSnowflake 类的实现
+
+```java
+@Slf4j
+@Component
+public class TwittorSnowflake {
+    //工作 ID
+    private long workerId = 0;
+    // 数据中心 ID
+    private long datacenterId = 1;
+    
+    private Snowflake snowflake = IdUtil.createSnowflake(workerId, datacenterId);
+    
+    /**
+     * import javax.annotation.PostConstruct
+     */
+    @PostConstruct
+    public void init(){
+        try{
+            
+            workerId = NetUtil.ipv4ToLong(NetUtil.getLocalhostStr());
+            log.info("Current workerID：", workerId);
+            
+        }catch(Exception ex){
+            ex.printStackTrace();
+            log.error("Get Current Error：", ex);
+            workerId = NetUtil.getLocalhostStr().hashCode();
+        }
+    }
+    
+    public synchronized long snowflakeId(){
+        return snowflake.nextId();
+    }
+    
+    public synchronized long snowflakeId(long workerId, long datacenterId){
+        Snowflake snowflake = IdUtil.createSnowflake(workerId, datacenterId);
+        return snowflake.nextId();
+    }
+}
+```
+
+
+
+### 5、Snowflake 雪花算法优缺点
+
+
+
+#### 1、Snowflake 优点
+
+
+
+>   毫秒数在高位，自增序列在低位，整个 ID 都是趋势递增的
+>
+>   不依赖数据库等第三方系统，以服务的方式部署，稳定性更高，生成 ID 的性能也是非常高的。可以根据自身业务特性分配 bit 位，非常灵活
+
+
+
+#### 2、Snowflake 缺点
+
+
+
+>   依赖机器时钟，如果机器时钟回拨，会导致重复ID生成
+>
+>   在单机上是递增的，但是由于设计到分布式环境，每台机器上的时钟不可能完全同步，有时候会出现不是全局递增的情况(此缺点可以认为无所谓，一般分布式 ID 只要求趋势递增，并不会严格要求递增，90% 的需求都只要求趋势递增)
+
+**如果要求绝对严格，不允许时钟回拨问题，可以继续往下看**
+
+
+
+### 6、Snowflake 改进版或替代品
+
+
+
+#### 1、UidGenerator 
+
+
+
+UidGenerator 是 百度公司 基于 Java实现的, 基于 [Snowflake ](https://github.com/twitter/snowflake)算法的唯一ID生成器。UidGenerator以组件形式工作在应用项目中, 支持自定义workerId位数和初始化策略, 从而适用于[docker](https://www.docker.com/)等虚拟化环境下实例自动重启、漂移等场景。 在实现上, UidGenerator通过借用未来时间来解决sequence天然存在的并发限制; 采用RingBuffer来缓存已生成的UID, 并行化UID的生产和消费, 同时对CacheLine补齐，避免了由RingBuffer带来的硬件级「伪共享」问题. 最终单机QPS可达600万
+
+>   详细参考：[https://github.com/baidu/uid-generator/blob/master/README.zh_cn.md](https://link.zhihu.com/?target=https%3A//github.com/baidu/uid-generator/blob/master/README.zh_cn.md)
+
+
+
+#### 2、Leaf 
+
+
+
+##### 1、Leaf 介绍
+
+>   详细参考：[https://tech.meituan.com/MT_Leaf.html](https://link.zhihu.com/?target=https%3A//tech.meituan.com/MT_Leaf.html)
+
+Leaf由美团开发，Leaf同时支持号段模式和 Snowflake 算法模式，可以切换使用。
+
+Leaf-segment方案：
+
+-   通过 proxy server 批量获取分布式ID，每次获取一个 segment 号段，用完之后再去数据库获取新的号段，大大的减轻数据库的压力
+-   各个业务不同的发号需求用 biz_tag 字段来区分，每个 biz-tag 的 ID 获取相互隔离，互不影响。如果以后有性能需求需要对数据库扩容，只需要对 biz_tag 分库分表就行
+
+建表语句如下：
+
+```sql
+DROP TABLE IF EXISTS `leaf_alloc`; 
+
+CREATE TABLE `leaf_alloc` (  
+    `biz_tag` varchar(128)  NOT NULL DEFAULT '' COMMENT '业务key,用来区分业务',  
+    `max_id` bigint(20) NOT NULL DEFAULT '1' COMMENT '当前已经分配了的最大id',  
+    `step` int(11) NOT NULL COMMENT '初始步长，也是动态调整的最小步长',  
+    `description` varchar(256)  DEFAULT NULL COMMENT '业务key的描述',  
+    `update_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '数据库维护的更新时间',  
+    PRIMARY KEY (`biz_tag`)
+) ENGINE=InnoDB;
+```
+
+
+
+##### 2、Leaf 架构图
+
+![image-20210609180214086](SpringCloud.assets/image-20210609180214086.png)
+
+test_tag 在第一台 Leaf 机器上是 1~1000 的号段，当这个号段用完时，会去加载另一个长度为step=1000的号段，假设另外两台号段都没有更新，这个时候第一台机器新加载的号段就应该是3001~4000。同时数据库对应的biz_tag这条数据的max_id会从3000被更新成4000
+
+>   更新号段的SQL语句如下：
+
+```sql
+Begin   
+UPDATE table SET max_id = max_id + step WHERE biz_tag = xxx;
+SELECT tag, max_id, step FROM table WHERE biz_tag = xxxCommit;
+```
+
+
+
+##### 3、Leaf 优缺点介绍
+
+
+
+优点：
+
+-   ​    支持线性扩展，性能能够支撑大多数业务场景。
+-   ​    ID是趋势递增的8byte的64位数字。
+-   ​    容灾性高：即使DB宕机，短时间内Leaf仍能正常对外提供服务。
+-   ​    自定义max_id大小，方便业务以原有ID迁移过来。
+
+缺点：
+
+-   ​    ID不够随机，能够泄露发号数量的信息，不太安全。
+-   ​    TP999更新号段，数据库IO可能导致用户线程阻塞。
+-   ​    DB宕机会造成整个系统不可用。
+
+
+
+#### 6、TinyID
+
+
+
+>   Tinyid 是滴滴公司用 Java 开发的一款分布式 ID 生成系统，基于数据库号段模式实现，关于这个算法与美团 Leaf-segment 如出一辙。Tinyid 提供了 java-client(sdk) 使 id 生成本地化，获得了更好的性能与可用性
+
+TinyID的特性：
+
+​    http方式访问，性能取决于http server的能力，网络传输速度。
+
+​    java-client方式，本地生成，号段长度(step)越长，QPS越大
