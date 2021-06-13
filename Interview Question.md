@@ -1,4 +1,4 @@
-# 1、数据结构与算法
+1、数据结构与算法
 
 
 
@@ -4278,7 +4278,6 @@ public class BracketMatching {
 
 
 >   插入排序动画演示：
->
 
 ![img](Interview Question.assets/v2-8a97a82ab39183f3177e99b5bb74e55e_b.webp)
 
@@ -4373,9 +4372,8 @@ public int[] insertSort() {
 然后按照增量 3 进行分段. 然后继续插入排序. 循环如此. 直到增量为 1 时 在进行最后一次插入排序. 基本上很多数据已经有一定顺序了. 就减少了移动数据位置的频率. 从而提高时间复杂度
 
 >   下图为动画演示版：
->
 
-![img](Interview Question.assets/v2-f14e4169ff39bad42c3dd6c385ad9c72_b.webp)
+![640](Interview Question.assets/640.gif)
 
 
 
@@ -4430,7 +4428,7 @@ public int[] shellsSort()
 
 >   **动画演示：**
 
-![img](Interview Question.assets/v2-1c7e20f306ddc02eb4e3a50fa7817ff4_b.webp)
+![微信图片_20210613183723](Interview Question.assets/微信图片_20210613183723.gif)
 
 
 
@@ -4495,7 +4493,6 @@ public int[] selectSort(){
 
 
 >   动画演示：
->
 
 ![img](Interview Question.assets/v2-33a947c71ad62b254cab62e5364d2813_b.webp)
 
@@ -4565,9 +4562,8 @@ public int[] bubbleSort(){
 
 
 >   动画演示：
->
 
-![img](Interview Question.assets/v2-cdda3f11c6efbc01577f5c29a9066772_b.webp)
+![微信图片_20210613184016](Interview Question.assets/微信图片_20210613184016.gif)
 
 
 
@@ -4671,7 +4667,6 @@ private int[] merge(int[] nums, int left, int middle, int right){
 ![image-20210611222644223](Interview Question.assets/image-20210611222644223.png)
 
 >   算法步骤详解：
->
 
 -   从数列中挑出一个元素，称为"基准"（pivot）
 -   重新排序数列，所有比基准值小的元素摆放在基准前面，所有比基准值大的元素摆在基准后面（相同的数可以到任何一边）在这个分区结束之后，该基准就处于数列的中间位置。这个称为分区（partition）操作
@@ -4688,9 +4683,8 @@ private int[] merge(int[] nums, int left, int middle, int right){
 
 
 >   动画演示：
->
 
-![img](Interview Question.assets/v2-c411339b79f92499dcb7b5f304c826f4_b.webp)
+![微信图片_20210613183558](Interview Question.assets/微信图片_20210613183558.gif)
 
 
 
@@ -4858,9 +4852,9 @@ public int[] quickSort(int[] nums, int start, int end){
 
 
 
->   以下是视频演示：
+>   以下是动画演示：
 
-<video src="Interview Question.assets/heapSortMV.mp4"></video>
+![微信图片_20210613184238](Interview Question.assets/微信图片_20210613184238.gif)
 
 
 
@@ -4941,7 +4935,7 @@ private void heap(int[] nums, int start, int end){
 
 >   动画演示
 
-![img](Interview Question.assets/v2-3a6f1e5059386523ed941f0d6c3a136e_b.webp)
+![微信图片_20210613184456](Interview Question.assets/微信图片_20210613184456.gif)
 
 
 
@@ -5113,7 +5107,7 @@ public int[] countingSort() {
 
 >   动画演示：
 
-![img](Interview Question.assets/aHR0cHM6Ly91c2VyLWdvbGQtY2RuLnhpdHUuaW8vMjAyMC8zLzI5LzE3MTI0MGQzYTMwYmI3ZGQ)
+![微信图片_20210613184347](Interview Question.assets/微信图片_20210613184347.gif)
 
 
 
@@ -5196,9 +5190,9 @@ public static ArrayList<Integer> BucketSort(ArrayList<Integer> array, int bucket
 
 ##### 3、排序算法对比
 
+![image-20210613185648935](Interview Question.assets/image-20210613185648935.png)
 
 
-![image-20210612120726131](Interview Question.assets/image-20210612120726131.png)
 
 >   图片名词解释：
 
@@ -5233,7 +5227,61 @@ public static ArrayList<Integer> BucketSort(ArrayList<Integer> array, int bucket
 
 #### 1、鸡尾酒排序 cocktailSort
 
+
+
 >   又名：双向冒泡排序
+
+##### 1、什么是鸡尾酒排序？
+
+
+
+与冒泡排序不同的地方
+
+鸡尾酒排序，即双向的冒泡排序，等于是冒泡排序的轻微变形。不同的地方在于\*从低到高然后从高到低（有先后顺序，并非同时；大循环下第一个循环是从开始扫到结束，将最大的归到最后；第二个循环是从倒数第二个位置往开始端扫，将最小的归到开始的位置）\*，而冒泡排序则仅仅从低到高去比较序列里的每个元素。他可以得到比冒泡排序稍微好一点的效能，原因是冒泡排序只从一个方向进行比对（由低到高），每次只移动一个项目和。 　　以排序（49,38,65,97,76,13,27,14,10）为例，鸡尾酒排序只要访问一次序列就可以完成排序，但如果使用冒泡排序需要八次。**但是在乱数序列的状态下，鸡尾酒排序和冒泡排序的效率都很差**
+
+>   排序过程：
+
+1.  先对数组从左到右进行冒泡排序（升序），则最大的元素去到最右端
+2.  再对数组从右到左进行冒泡排序（降序），则最小的元素去到最左端
+3.  以此类推，依次改变冒泡的方向，并不断缩小未排序元素的范围，直到最后一个元素结束
+
+>   动画演示:
+
+![图片来自维基百科](Interview Question.assets/sorting-shaker-sort-anim.gif)
+
+
+
+##### 2、Java 代码实现
+
+
+
+```java
+public static int[] cocktailSort(int[] src) {
+    int len = src.length;
+    //将最小值排到队尾
+    for (int i = 0; i < len / 2; i++) {
+        for (int j = i; j < len - i - 1; j++) {
+            if (src[j] < src[j + 1]) {
+                int temp = src[j];
+                src[j] = src[j + 1];
+                src[j + 1] = temp;
+            }
+            System.out.println("交换小" + Arrays.toString(src));
+        }
+        //将最大值排到队头
+        for (int j = len - 1 - (i + 1); j > i; j--) {
+            if (src[j] > src[j - 1]) {
+                int temp = src[j];
+                src[j] = src[j - 1];
+                src[j - 1] = temp;
+            }
+            System.out.println("交换大" + Arrays.toString(src));
+        }
+        System.out.println("第" + i + "次排序结果：" + Arrays.toString(src));
+    }
+    return src;
+}
+```
 
 
 
@@ -5241,13 +5289,133 @@ public static ArrayList<Integer> BucketSort(ArrayList<Integer> array, int bucket
 
 
 
-#### 3、地精排序 gnomeSort
-
->   又名：侏儒排序
+##### 1、双调排序简介
 
 
 
-#### 4、奇偶排序 paritySort
+双调排序（bitonic sort）属于排序网络(Sorting Network）的一种。相较于传统的排序算法，排序网络真正的研究价值在于，假如有机器可以同时处理多个比较器，排序的速度将大幅度提高。简单来说，它是一种可以并行计算的排序算法。
+
+>   可参考这篇详细的文章介绍：https://www.jianshu.com/p/ea4a62fdaae9
+
+
+
+#### 3、朱诺排序 gnomeSort
+
+
+
+>   **Gnome 排序**（被称为**愚蠢排序、侏儒排序**）是[伊朗](https://en.wikipedia.org/wiki/Iran)计算机科学家[Hamid Sarbazi-Azad](https://en.wikipedia.org/w/index.php?title=Hamid_Sarbazi-Azad&action=edit&redlink=1)（[谢里夫理工大学](https://en.wikipedia.org/wiki/Sharif_University_of_Technology)计算机科学与工程教授）于 2000 年最初提出的一种[排序算法](https://en.wikipedia.org/wiki/Sorting_algorithm)。该排序最初被称为*愚蠢排序（不要与[bogosort](https://en.wikipedia.org/wiki/Bogosort)混淆），然后由[Dick Grune](https://en.wikipedia.org/wiki/Dick_Grune)描述并命名为* gnome sort
+
+
+
+##### 1、朱诺排序介绍
+
+
+
+-   **Gnome排序（地精排序）**也称侏儒排序，是一个比较简单的稳定排序算法。
+-   **描述**：它和插入排序算法非常类似，都是将元素移动到合适的位置，并通过一系列交换完成的
+-   **特点**：地精排序只有一层循环，在大部分数据是有序的情况下，可以减少交换的回合数
+
+号称最简单的排序算法，看看是怎么简单的。实现思想是（升序）：先将数组进行冒泡排序，碰到比比较元素大的就往回冒泡
+
+>   动画演示
+
+![File:Sorting gnomesort anim.gif](Interview Question.assets/Sorting_gnomesort_anim.gif)
+
+
+
+##### 2、Java 代码实现
+
+>   先初始化一个移动指针index，判断数据是否有交换，只要数据有交换，index指针就自减，没有数据交换，index指针就自加。
+
+```java
+/**
+ * 地精排序
+ *   最好情况：T(n) = O(n)，在所有元素已经排好序的情况（只需要比较一次）
+ *   最差情况：T(n) = O(n^2)
+ */
+public static int[] gnomeSort(int[] nums) {
+	if (nums == null) {
+		return null;
+	}
+		
+	int length = nums.length - 1;
+	int index = 1; // 从下标1开始
+		
+	while (index <= length) {
+		if (index > 0 && nums[index] < nums[index-1]) {
+			int temp = nums[index];
+			nums[index] = nums[index - 1];
+			nums[index - 1] = temp;
+				
+			index--;
+		} else {
+			index++;
+		}
+	}
+		
+	return nums;
+}
+```
+
+
+
+#### 4、奇偶排序 paritySorting
+
+
+
+##### 1、奇偶排序介绍
+
+
+
+>   《[Java数据结构和算法](https://baike.baidu.com/item/Java数据结构和算法/6153539)》中写道：
+>
+>   奇偶排序实际上在多处理器环境中很有用，处理器可以分别同时处理每一个奇数对，然后又同时处理偶数对。因为奇数对是彼此独立的，每一刻都可以用不同的处理器比较和交换。这样可以非常快速地排序
+
+
+
+该算法中，排序过程分两个阶段，奇交换和偶交换，两种交换都是成对出现。对于奇交换，它总是比较奇数索引以及其相邻的后续元素。对偶交换，总是比较偶数索引和其相邻的后续元素。思路是在数组中重复两趟扫描。第一趟扫描选择所有的数据项对，a[j]和a[j+1]，j是奇数(j=1, 3, 5……)。如果它们的关键字的值次序颠倒，就交换它们。第二趟扫描对所有的偶数数据项进行同样的操作(j=2, 4,6……)。重复进行这样两趟的排序直到数组全部有序。
+
+**简单来说就是：奇数列排一趟序, 偶数列排一趟序, 再奇数排, 再偶数排, 直到全部有序**
+
+>   动画演示：
+
+![img](Interview Question.assets/430613-20170410100625985-13286360.gif)
+
+
+
+##### 2、Java代码介绍
+
+
+
+>   以下是串行版久排序的实现
+>
+>   并行版排序参考：https://www.cnblogs.com/kongzhongqijing/p/6687699.html
+
+```java
+public void paritySorting(int[] array) {
+    for (int i = 0; i < array.length; i += 2) {
+        int j = 0;
+        scan(array, j);
+        j = 1;
+        scan(array, j);
+    }
+}
+
+private void scan(int[] array, int j) {
+    while (j < array.length - 1) {
+        if (array[j] > array[j + 1]) {
+            swap(array, j, j + 1);
+        }
+        j += 2;
+    }
+}
+
+private static void swap(int[] array, int index1, int index2) {
+    int temp = array[index1];
+    array[index1] = array[index2];
+    array[index2] = temp;
+}
+```
 
 
 
@@ -5255,23 +5423,377 @@ public static ArrayList<Integer> BucketSort(ArrayList<Integer> array, int bucket
 
 
 
-#### 6、张仰彪排序 chinaSort
+##### 1、图书馆排序介绍
 
 
 
-#### 7、意大利面排序 pastaSort
+>   此算法由 [Michael A. Bender](https://zh.wikipedia.org/w/index.php?title=Michael_A._Bender&action=edit&redlink=1)、[Martín Farach-Colton ](https://zh.wikipedia.org/w/index.php?title=Martín_Farach-Colton&action=edit&redlink=1)和 [Miguel Mosteiro](https://zh.wikipedia.org/w/index.php?title=Miguel_Mosteiro&action=edit&redlink=1) 于2004年提出并于2006年出版
+
+图书馆排序像插入排序一样，是[稳定](https://zh.wikipedia.org/wiki/排序算法)的排序算法，并且它是[在线排序](https://zh.wikipedia.org/wiki/線上演算法)；然而，它被证明在大部分情况下具有O(n log n)的运行速度（相当于[快速排序](https://zh.wikipedia.org/wiki/快速排序)），而不是插入排序的O(n2)。用于此改进的机制与跳过列表非常相似。本文没有给出完整的实现，也没有重要部分的确切算法，如插入和重新平衡。需要更多的信息来比较图书馆排序的效率与现实中其他排序方法的效率
+
+思路简介,大概意思是说,排列图书时,如果在每本书之间留一定的空隙,那么在进行插入时就有可能会少移动一些书,说白了就是在插入排序的基础上,给书与书之间留一定的空隙,这个空隙越大,需要移动的书就越少,这是它的思路, 用空间换时间、这个空隙留多大、我们自己定、图书馆排序的关键是分配空间,分配完空间后直接使用插入排序即可
+
+
+
+##### 2、C 代码实现
+
+
+
+现在我们有大小为n个元素的数组。我们选择每两个元素之间的空位，那么我们将有一个最大的数组（1 +ε）n。该算法在log n轮中工作。我们通过二分查找来找到插入的位置，然后交换后面的元素，直到我们命中一个空格。一旦结束，我们通过在每个元素之间插入空格来重新平衡最终的数组
+
+
+
+>   算法根据以下三个重要的步骤：
+>
+>   1.  二分查找：我们在已经插入的元素中，二分查找这个元素应该插入的位置。这可以通过线性移动到阵列的左侧或右侧，如果您点击中间元素中的空格。
+>   2.  插入: 将元素插入到正确的位置，并且通过交换把后面的元素向右移动，直到空格。
+>   3.  重新平衡：在数组中的每对元素之间插入空格。这需要线性时间，并且由于算法只运行log n轮，总重新平衡只需要O（n log n）时间
+
+```c
+#include <algorithm>
+#include <iostream>
+ 
+void librarySort(int *index, int n) {
+    int lib_size, index_pos,
+        *gaps,        // gaps
+        *library[2];  // libraries
+ 
+    bool target_lib, *numbered;
+ 
+    for (int i = 0; i < 2; i++)
+        library[i] = new int[n];
+ 
+    gaps = new int[n + 1];
+    numbered = new bool[n + 1];
+ 
+    lib_size = 1;
+    index_pos = 1;
+    target_lib = 0;
+    library[target_lib][0] = index[0];
+ 
+    while (index_pos < n) {
+        // binary search
+        int insert = std::distance(
+            library[target_lib],
+            std::lower_bound(library[target_lib],
+                             library[target_lib] + lib_size, index[index_pos]));
+ 
+        // if there is no gap to insert a new index ...
+        if (numbered[insert] == true) {
+            int prov_size = 0, next_target_lib = !target_lib;
+ 
+            // update library and clear gaps
+            for (int i = 0; i <= n; i++) {
+                if (numbered[i] == true) {
+                    library[next_target_lib][prov_size] = gaps[i];
+                    prov_size++;
+                    numbered[i] = false;
+                }
+ 
+                if (i <= lib_size) {
+                    library[next_target_lib][prov_size] =
+                        library[target_lib][i];
+                    prov_size++;
+                }
+            }
+ 
+            target_lib = next_target_lib;
+            lib_size = prov_size - 1;
+        } else {
+            numbered[insert] = true;
+            gaps[insert] = index[index_pos];
+            index_pos++;
+        }
+    }
+ 
+    int index_pos_for_output = 0;
+    for (int i = 0; index_pos_for_output < n; i++) {
+        if (numbered[i] == true) {
+            // std::cout << gaps[i] << std::endl;
+            index[index_pos_for_output] = gaps[i];
+            index_pos_for_output++;
+        }
+ 
+        if (i < lib_size) {
+            // std::cout << library[target_lib][i] << std::endl;
+            index[index_pos_for_output] = library[target_lib][i];
+            index_pos_for_output++;
+        }
+    }
+}
+ 
+int main() {
+    // ---example--
+    int index_ex[] = {-6, 5, 9, 1, 9, 1, 0, 1, -8, 4, -12};
+    int n_ex = sizeof(index_ex) / sizeof(index_ex[0]);
+ 
+    librarySort(index_ex, n_ex);
+    std::cout << "sorted array :" << std::endl;
+    for (int i = 0; i < n_ex; i++)
+        std::cout << index_ex[i] << " ";
+    std::cout << std::endl;
+ 
+    /* --output--
+    sorted array :
+    -12 -8 -6 0 1 1 1 4 5 9 9
+    */
+}
+```
+
+
+
+
+
+#### 6、梳排序 CombSort
+
+
+
+##### 1、梳排序介绍
+
+
+
+>   **梳排序（Comb sort）**是一种由[Wlodzimierz Dobosiewicz](https://zh.wikipedia.org/w/index.php?title=Wlodzimierz_Dobosiewicz&action=edit&redlink=1)于1980年所发明的不稳定[排序算法](https://zh.wikipedia.org/wiki/排序算法)，并由[Stephen Lacey](https://zh.wikipedia.org/w/index.php?title=Stephen_Lacey&action=edit&redlink=1)和[Richard Box](https://zh.wikipedia.org/w/index.php?title=Richard_Box&action=edit&redlink=1)于1991年四月号的[Byte杂志](https://zh.wikipedia.org/w/index.php?title=Byte雜誌&action=edit&redlink=1)中推广
+
+梳排序是冒泡排序的一种优化方案，主要是为了解决冒泡排序中的尾部小数值问题。它主要的思想是通过比较元素和固定步长位置上的数据，先进行部分优化，然后逐步减少步长，以此来对数据进行预处理。
+
+以数组 [3,1 5, 2, 4]为例，假设步长是2，那么就分别处理[3, 5, 4]和[1, 2]，先局部优化。优化完成后，再使用冒泡排序。
+
+**关于步长的选取**
+
+步长并不是逐步递减的，步长的选取一般通过一个步长因子来控制：
+
+1.  初始化时，步长等于数组长度除以步长因子。
+2.  后续的所有步长都等于前一次步长除以步长因子，直到步长小于等于1。
+
+从实验结果来看，这个步长因子设置为`1.3`时能获得较好的性能，并且实验数据证明，梳排序的良好性能甚至可以与快速排序媲美
+
+>   动画演示
+
+![File:Comb sort demo.gif](Interview Question.assets/Comb_sort_demo.gif)
+
+##### 2、Java 代码实现
+
+
+
+```java
+/**
+ **梳排序
+ * @param array
+ */
+public static void combSort(int[] array) {
+    int gap = array.length ;
+    boolean swapped = true ;
+    while(gap > 1 || swapped) {
+        if(gap > 1) {
+            gap = (int)(gap/1.3) ;
+        }
+        int i = 0;
+        swapped = false ;
+        while(i + gap < array.length) {
+            if(array[i] > array[i+gap]) {
+                swap(array, i, i+gap) ;
+                printArr(array) ;
+                swapped = true ;
+            }
+            i++ ;
+        }
+    }
+}
+/**
+ * 按从小到大的顺序交换数组
+ * @param a 传入的数组
+ * @param b 传入的要交换的数b
+ * @param c	传入的要交换的数c
+ */
+public static void swap(int[] a, int b, int c) {
+    if(b == c) return ;
+    int temp = a[b] ;
+    a[b] = a[c] ;
+    a[c] = temp ; 
+}
+```
+
+
+
+#### 7、意大利面排序 noodleSort
+
+
+
+##### 1、算法介绍
 
 >   又名：面条排序
 
 
 
+如果桌子上有一把长短不一的面条，此时你将面条立起来，下端平放在桌面上，此时你用手掌在空中从上往下缓慢移动，慢慢的，你的手掌触碰到了一根面条（这根面条是最高的），你将这根面条抽走（抽走的面条当然想怎么吃就怎么吃），手继续慢慢向下移动，这是，你又碰到了倒数第二高的面条，你又将其抽走，。。。。
+
+ 算法中，我们用一个数模拟手，每次-1，为了不至于手掌无处安放，我们将手直接放在最高的面条的顶端
+
+
+
+>   动画演示：
+
+![img](Interview Question.assets/1940317-b0188973a1665cdf.gif)
+
+
+
+##### 2、Java 代码实现
+
+```java
+public void noodleSort(int[] arr) {
+    /** 模拟手 */
+    int hand=arr[0];
+    /** 获取最小值 模拟桌子 防止手一直运动*/
+    int min=arr[0];
+    /** 将最大值赋给变量  */
+    for (int i = 0; i < arr.length; i++) {
+        if(hand<arr[i]) {
+            hand=arr[i];
+        }
+        if(min>arr[i]) {
+            min=arr[i];
+        }
+    }
+
+    for (int i = arr.length-1; hand>=min; hand--) {
+        for (int j = 0; j <= i; j++) {
+            if(hand==arr[j]) {
+                /** j为什么要-- 防止交换的数字本身也等于hand */
+                arr[j--]=arr[i];
+                arr[i--]=hand;
+            }
+        }
+    }
+}
+```
+
+
+
 #### 8、鸽巢排序 pigeonholeSort
 
+
+
+##### 1、鸽巢排序介绍
+
+
+
 >   又名：桶排序变种
+
+鸽巢排序, 也被称作基数分类, 是一种 [时间复杂度](javascript:void())为(Θ(n))且在不可避免遍历每一个元素并且排序的情况下效率最好的一种 [排序算法](javascript:void()). 但它只有在差值(或者可被映射在差值)很小的范围内的数值排序的情况下实用.
+
+当涉及到多个不相等的元素, 且将这些元素放在同一个"鸽巢"的时候, 算法的效率会有所降低.为了简便和保持鸽巢排序在适应不同的情况, 比如两个在同一个存储桶中结束的元素必然相等
+
+我们一般很少使用鸽巢排序, 因为它很少可以在灵活性, 简便性, 尤是速度上超过其他 [排序算法](javascript:void()). 事实上, [桶排序](javascript:void())较鸽巢排序更加的实用.
+
+鸽巢排序的一个比较有名的变形是tally sort, 它仅仅适用非常有限的题目, 这个算法因在Programming Pearls一书中作为解决一个非常规有限集问题方法的例子而著名.
+
+显然, 快速排序可以当作只有两个(有些情况下是三个)"鸽巢"的鸽巢排序
+
+
+
+##### 2、Java 代码实现
+
+```java
+static int[] pigeonholeSort(int[] unsorted){
+    //获取数组中最大的数
+    int m,maxNumber = 0;
+    maxNumber = unsorted[0];
+    for(m=0; m<unsorted.length; m++) {
+        if(unsorted[m]>maxNumber){
+            maxNumber = unsorted[m];
+        }
+    }
+    //需要确认数组中最大数值
+    int[] lastSort = new int[unsorted.length];
+    int[] pogeonHole = new int[maxNumber + 1];
+    for (int item : unsorted){
+        pogeonHole[item]++;//表示pogeonHole[item]值+1再放回原位
+    }
+    int k=0;
+    for (int i = 0; i < pogeonHole.length; i++){
+        for (int j = 0; j < pogeonHole[i]; j++){
+            lastSort[k] = i;
+            k++;
+        }
+    }
+    System.out.println(lastSort.length);
+    return lastSort;
+}
+```
 
 
 
 #### 9、耐心排序 patienceSort
+
+
+
+##### 1、耐心排序介绍：
+
+>   **耐心排序**（Patience Sort）是将数组的元素分类成很多堆再串接回数组的一种[排序算法](https://zh.wikipedia.org/wiki/排序算法)
+
+
+
+算法步骤：
+
+-   创建一个堆数组
+-   比较目前指向的元素和每个堆的第一个元素，计算出比目前元素小的堆数量
+-   若目前元素比所有堆的第一个元素大，创建新的堆并加入到堆数组中，否则将目前元素加入到第“比目前元素小的堆数量”个堆
+-   分类完后将每个堆反序然后对每个堆再做耐心排序
+-   最后将每个堆串接并存储回原本的数组
+
+
+
+##### 2、Java 代码实现
+
+```java
+public static int[] patienceSort(int[] theArray) {
+    List new_list = new ArrayList();
+    for (int i = 0; i < theArray.length; i++) {
+        List bucket_list = new ArrayList();
+        if (i == 0) {
+            bucket_list.add(theArray[i]);
+            new_list.add(bucket_list);
+        } else {
+            boolean is_ok = false;
+            for (int j = 0; j < new_list.size(); j++) {
+                if (theArray[i] < (int) ((List) new_list.get(j)).get(0)) {
+                    ((List) new_list.get(j)).add(0, theArray[i]);
+                    is_ok = true;
+                    break;
+                }
+            }
+            if (!is_ok) {
+                bucket_list.add(theArray[i]);
+                new_list.add(bucket_list);
+            }
+        }
+    }
+    //多维数组变成单维数组
+    int[] ok_list = new int[theArray.length];
+    int q = 0;
+    for (int m = 0; m < new_list.size(); m++) {
+        for (int n = 0; n < ((List) new_list.get(m)).size(); n++) {
+            ok_list[q] = (int) ((List) new_list.get(m)).get(n);
+            q++;
+        }
+    }
+
+    //插入循环
+    int n = ok_list.length;//将数组的长度赋给n是为了防止每次for循环中判断时都调用length方法影响性能
+    int tmp;//用于中转数据
+    int j;
+    for (int i = 1; i < n; i++) {//排序的次数
+        tmp = ok_list[i];
+        // 取i前面的所有跟i位置元素进行比较，
+        // 先比较i-1和i，如果i-1大于i，则互换位置，i-1和i-2比较，以此类推
+        for (j = i - 1; j >= 0 && ok_list[j] > tmp; j--) {
+            ok_list[j + 1] = ok_list[j];
+        }
+        ok_list[j + 1] = tmp;
+    }
+    return ok_list;
+}
+```
 
 
 
@@ -5283,7 +5805,120 @@ public static ArrayList<Integer> BucketSort(ArrayList<Integer> array, int bucket
 
 
 
+##### 1、睡眠排序介绍
+
+
+
+在网上看到一个段子,里面说自己去面试的时候面试官让他写个排序算法出来,
+然后他用线程的休眠写出来了,我觉得这还真他娘的是个人才
+哈哈哈哈哈 学习就算了 看一下乐呵乐呵得了
+假如某些值比较大的话 估计得给面试官说:你先去睡一觉吧，睡醒了程序就跑完了
+
+
+
+>   动画演示：
+
+![img](Interview Question.assets/1940317-ef9fb39b5453865c.gif)
+
+
+
+##### 2、Java 代码实现
+
+```java
+
+public class SleepSort {  
+	
+    public static void main(String[] args) {  
+    	
+        int[] arr = {1,4,7,3,8,9,2,6,5};
+        //创建指定长度的线程数组
+        SortThread[] sortThreads = new SortThread[arr.length];  
+        //指定每个线程数组的值
+        for (int i = 0; i < sortThreads.length; i++) {  
+            sortThreads[i] = new SortThread(arr[i]);  
+        } 
+        //开启每个线程
+        for (int i = 0; i < sortThreads.length; i++) {  
+            sortThreads[i].start();  
+        }  
+    } 
+}  
+
+class SortThread extends Thread{  
+    int s = 0;  
+    public SortThread(int s){  
+        this.s = s;  
+    }  
+    public void run(){  
+        try {  
+            sleep(s*10+10);  //睡眠指定的时间
+        } catch (InterruptedException e) {  
+              
+            e.printStackTrace();  
+        }  
+        //输出该数
+        System.out.println(s);  
+    }  
+} 
+```
+
+
+
 #### 2、猴子排序 bogoSort
+
+
+
+##### 1、什么是猴子排序
+
+
+
+>   https://www.quora.com/What-is-sleep-sort
+>
+>   一个有趣的理论：**一只猴子随机敲打打字机键盘，如果时间足够长，总是能打出特定的文本，比如莎士比亚全集**
+
+设想一只猴子随机打乱数组，检查是否排好序，若是，则输出，否则猴子再次打乱，再检查…最佳情况O(n)，平均O(n*n!)，最坏可执行直到世界的尽头、猴子排序 (Bogo Sort) 是个既不实用又原始的排序算法，
+
+-   当然还有人觉得这样的算法还不够糟糕、又反向改进了一下代码，被称为 **蠢猴排序**
+-   当然还有人觉得这样的算法太糟糕了、设想有无数个平行空间都在猴子排序，被称为 **量子猴排**
+
+
+
+>   动画演示:
+
+![image](Interview Question.assets/1940317-f9fb65b7aefd6f21.gif)
+
+##### 2、Java 代码实现
+
+```java
+void bogo(int[] arr) {
+    //Keep a track of the number of shuffles
+    int shuffle = 1;
+    for (; !isSorted(arr); shuffle++)
+        shuffle(arr);
+    //Boast
+    System.out.println("This took " + shuffle + " shuffles.");
+}
+
+void shuffle(int[] arr) {
+    //Standard Fisher-Yates shuffle algorithm
+    int i = arr.length - 1;
+    while (i > 0)
+        swap(arr, i--, (int) (Math.random() * i));
+}
+
+void swap(int[] arr, int i, int j) {
+    int temp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = temp;
+}
+
+boolean isSorted(int[] arr) {
+    for (int i = 1; i < arr.length; i++)
+        if (arr[i] < arr[i - 1])
+            return false;
+    return true;
+}
+```
 
 
 
@@ -5291,7 +5926,145 @@ public static ArrayList<Integer> BucketSort(ArrayList<Integer> array, int bucket
 
 
 
+##### 1、什么是慢排序?
+
+
+
+**慢速排序**是一种[排序算法](https://zh.wikipedia.org/wiki/排序算法)。其基于[合并排序](https://zh.wikipedia.org/wiki/合併排序)的分而治之及递回的思想，并故意设计使排序过程非常缓慢。慢速排序由Andrei Broder及Jorge Stolfi在1986年发表的论文*Pessimal Algorithms and Simplexity Analysis*[[1\]](https://zh.wikipedia.org/wiki/慢速排序#cite_note-1)（关于[渐进最优算法](https://zh.wikipedia.org/wiki/渐进最优)及[计算复杂性理论](https://zh.wikipedia.org/wiki/計算複雜性理論)）中提出
+
+>   算法思想：
+
+具体的操作是分为以下两大步：
+
+-   找出最大者
+
+-   将其余的数排序
+
+
+其中子问题 1 又可分为以下 3 小步：
+
+-   找出前 n/2 个数中的最大者
+
+-   找出后 n/2 个数中的最大者
+
+-   取这两个最大者中的较大者
+
+
+最后，子问题 1.1 和 1.2 的解决方法是，将相应的数排序后取最后一个。
+
+也就是说我们把原问题分解成 3 个稍微容易一点点的子问题：给前一半数排序，给后一半数排序，给除了一个数以外的其它数排序。递归地进行这一系列步骤，直到至多只剩下一个元素时，停止
+
+>   动画演示
+
+![img](Interview Question.assets/p)
+
+
+
+国外有人对慢速排序动画写了一个段子：
+
+>   slow sort is just merge sort with the severe paranoia that the elements have moved themselves while it wasn't looking  //排序的元素趁大家不注意的时候偷偷的移动一下
+>
+
+
+
+##### 2、伪代码实现
+
+
+
+>   通过代码与动画可以看出，慢速排序和其他排序算法效果一样，可以将一个无序数据集合进行合理排序。
+>
+>   但是，它的时间复杂度简直吓人！T(n) = 2 * T(n/2) + T(n-1) + C（ C 表示常量时间）
+
+```java
+procedure slowsort(A,i,j)
+  if i >= j then return
+    m = (i + j) / 2                           
+    slowsort(A,i,m) // 先排序前半段
+    slowsort(A,m + 1,j) // 再排序后半段
+  if A[j] < A[m] then swap A[j] and A[m] // 找到最大数，放到末尾
+    slowsort(A,i,j - 1) // 再排序除了最大数之外的数据
+```
+
+
+
 #### 4、珠排序 beadSort
+
+
+
+##### 1、珠排序排序
+
+
+
+>   珠排序是一种自然排序算法，由Joshua J. Arulanandham, Cristian S. Calude 和 Michael J. Dinneen 在2002年发展而来，并且在欧洲理论计算机协会（European Association for Theoretical Computer Science，简称EATCS）的新闻简报上发表了该算法。
+
+
+
+算法思想：
+
+珠排序可以类比于珠子在平行的竖直杆上滑动，就像算盘一样，然而，每一竖直杆都有珠子数目的限制。因此，初始化就相当于在竖直的杆上悬挂珠子，在第一步中，排列就被显示为n=5行的珠子在m=4列队竖直杆上。每一行右边的数字意味着该行在问题中被表示的数；第1，2行表示正整数3（因为它们都有3个珠子）而顶层的一行表示正整数2（因为它只含有2个珠子）。
+
+如果我们要允许珠子掉落，那么每行表示已排序的整数。第1行表示在集合中最大的数，而第n行表示最小的数。如果按照前面提到的规则（行包含一系列在竖直杆1到k的珠子，并且让k+1到m竖直杆都空），那么它会出现这种情况。
+
+允许珠子掉落的行为在物理意义上就是允许珠子从高的行掉落至低的行。如果被行a表示的值小于被行a+1表示的值，那么一些珠子就会从a+1掉落至a；因为行a不包含足够的珠子防止珠从a+1行掉落，所以这一定会发生。
+
+用机械装置实现的珠排序类似于[计数排序](https://baike.baidu.com/item/计数排序)；每一杆上的数字与那些在所有数中等于或少于该数字的数量相当。
+
+>   珠排序算法
+
+<iframe src="//player.bilibili.com/player.html?aid=65176749&bvid=BV1F4411k7Q4&cid=113131519&page=1" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
+
+
+
+##### 2、Java 代码实现
+
+```java
+import java.util.Arrays;
+// Part of Cosmos by OpenGenus Foundation
+public class BeadSort {
+    private enum BeadSortStatus {
+        MARKED,
+        NOT_MARKED,
+    }
+    public static void main(String[] args) {
+        int[] arrayToSort = new int[]{4, 1, 6, 2, 40, 5, 3, 8, 7};
+        System.out.println(Arrays.toString(beadSort(arrayToSort)));
+    }
+    public static int[] beadSort(int[] arr) {
+        int max = 0;
+        for (int anArr : arr) {
+            if (anArr > max) {
+                max = anArr;
+            }
+        }
+        //Set up abacus
+        BeadSortStatus[][] grid = new BeadSortStatus[arr.length][max];
+        int[] levelcount = new int[max];
+        for(int i = 0; i < max; i++) {
+            levelcount[i] = 0;
+            for(int j = 0; j < arr.length; j++) {
+                grid[j][i] = BeadSortStatus.NOT_MARKED;
+            }
+        }
+        //Drop the beads
+        for (int anArr : arr) {
+            int num = anArr;
+            for (int j = 0; num > 0; j++, num--) {
+                grid[levelcount[j]++][j] = BeadSortStatus.MARKED;
+            }
+        }
+        //Count the beads
+        int[] sorted=new int[arr.length];
+        for(int i = 0; i < arr.length; i++) {
+            int putt = 0;
+            for(int j = 0; j < max && grid[arr.length - 1 - i][j] == BeadSortStatus.MARKED; j++) {
+                putt++;
+            }
+            sorted[i] = putt;
+        }
+        return sorted;
+    }
+}
+```
 
 
 
@@ -5299,7 +6072,137 @@ public static ArrayList<Integer> BucketSort(ArrayList<Integer> array, int bucket
 
 
 
+##### 1、臭皮匠排序介绍
+
+
+
+>   **臭皮匠排序**（英语：**Stooge Sort**）是一种低效的递归排序算法，甚至慢于[冒泡排序](https://baike.baidu.com/item/冒泡排序/4602306)。在《算法导论》第二版第7章（快速排序）的思考题中被提到，是由Howard、Fine等教授提出的所谓“漂亮的”排序算法
+
+
+
+该排序是一种低效的递归排序算法，不仅慢于一般的有效排序算法（如：插入排序，合并排序，堆排序和快速排序），甚至慢于冒泡排序。所以相比于经典的排序算法，STOOGE算法具有非常差的性能
+
+详细推导步骤参考：https://my.oschina.net/u/4010368/blog/4599344
+
+
+
+>   动画演示：
+
+![img](Interview Question.assets/Sorting_stoogesort_anim.gif)
+
+
+
+##### 2、Java 代码实现
+
+
+
+>   如果最后一个值小于第一个值，则交换这两个数
+>
+>   -   如果当前集合元素数量大于等于3：
+>   -   使用臭皮匠排序前2/3的元素
+>   -   使用臭皮匠排序后2/3的元素
+>   -   再次使用臭皮匠排序前2/3的元素
+
+```java
+/**
+ * 臭皮匠排序
+ *
+ * @param array
+ */
+public static void stoogeSort(int[] array) {
+    stoogeSort(array, 0, array.length - 1);
+}
+
+/**
+ * 重载臭皮匠排序
+ *
+ * @param array
+ * @param low
+ * @param high
+ */
+public static void stoogeSort(int[] array, int low, int high) {
+    printArr(array);
+    if (array[low] > array[high]) {
+        swap(array, low, high);
+    }
+    if (low + 1 >= high) return;
+    int third = (high - low + 1) / 3;
+    stoogeSort(array, low, high - third);
+    stoogeSort(array, low + third, high);
+    stoogeSort(array, low, high - third);
+}
+
+/**
+ * 按从小到大的顺序交换数组
+ *
+ * @param a 传入的数组
+ * @param b 传入的要交换的数b
+ * @param c 传入的要交换的数c
+ */
+public static void swap(int[] a, int b, int c) {
+    if (b == c) return;
+    int temp = a[b];
+    a[b] = a[c];
+    a[c] = temp;
+}
+
+/**
+ * 打印数组     * @param array
+ */
+public static void printArr(int[] array) {
+    for (int c : array) {
+        System.out.print(c + " ");
+    }
+    System.out.println();
+}
+```
+
+
+
 #### 6、煎饼排序 pancakeSort
+
+
+
+##### 1、什么是煎饼排序？
+
+
+
+**煎饼排序**（英语：Pancake sorting）指的是将大小不同的一摞煎饼按大小排序的数学问题，其中[煎饼铲子](https://zh.wikipedia.org/w/index.php?title=炒菜铲子&action=edit&redlink=1)每次只能从任意位置铲起上方全部煎饼并翻面。“煎饼数”（英语：pancake number）是指给定煎饼的张数时，最坏情况下需要的最少翻面次数。这个问题最早由[美国](https://zh.wikipedia.org/wiki/美国)[几何学家](https://zh.wikipedia.org/wiki/几何学家列表)[雅可比·古德曼](https://zh.wikipedia.org/w/index.php?title=雅可比·E·古德曼&action=edit&redlink=1)提出。[[1\]](https://zh.wikipedia.org/wiki/煎餅排序#cite_note-1)它属于[排序问题](https://zh.wikipedia.org/wiki/排序算法)的变种。煎饼排序的目标和传统排序算法最小化比较次数不同，因为它每次操作只允许反转序列的[前缀](https://zh.wikipedia.org/w/index.php?title=前缀_(计算机科学)&action=edit&redlink=1)，所以需要最小化反转前缀次数。焦煎饼排序是煎饼排序的变种问题，每张煎饼都有一面是烤焦的，最终除了按照大小排序以外还要让所有焦面向下
+
+Pancake sort 也是排序算法其中的一种，之所以叫做pancake sort是因为有一个特殊的操作叫做flip(int[] A,int k)就是将数组A[0,k]进行翻转，pancake sort的时间复杂度是O ( n 2 ) O(n^2)O(n 2)的，我们通过两次翻转数组的操作来排序一个元素，我们首先找到最大的元素，先将这个元素通过一次翻转到数组的第一个位置，然后再通过一次翻转将这个元素翻转到最后一个位置上，然后这个元素我们就可以不用管了，然后再去处理这个处理这个元素之前的数组就可以了
+
+
+##### 2、Java 代码实现
+
+```java
+public void pancakeSort(int[] A) {
+    if (A == null || A.length == 0) return;
+    int largest = A.length;
+    int n = A.length;
+    for (int i = 0; i < n; i++) {
+        int max = Integer.MIN_VALUE;
+        int maxIndex = -1;
+        for (int j = 0; j < largest; j++) {
+            if (A[j] > max) {
+                max = A[j];
+                maxIndex = j;
+            }
+        }
+        flip(A, maxIndex);
+        flip(A, largest - 1);
+        largest--;
+    }
+}
+
+private void flip(int[] A, int k) {
+    int i = 0, j = k;
+    while (i < j) {
+        int temp = A[i];
+        A[i++] = A[j];
+        A[j--] = temp;
+    }
+}
+```
 
 
 
