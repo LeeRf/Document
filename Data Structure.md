@@ -14,19 +14,27 @@
 int[] array = new int[100]; 
 ```
 
-如上Java代码就是一个简单的散列表.
+如上Java代码就是一个简单的散列表. ，下图就是个 Hash Table( 拉链法 )
+
+![image-20210615095154785](Data Structure.assets/image-20210615095154785.png)
 
 
 
 ### 2、什么是 Hash 函数？
 
-简单来说就是对 N 取模 比如 
+
+
+根据关键码值(Key value)而直接进行访问的数据结构。也就是说，它通过把关键码值映射到表中一个位置来访问记录，以加快查找的速度、拿我们上面的例子来说我们对N取模，其实这就是一个散列函数。也就是大家经常看到的Hash(key)，这个Hash函数就是我们说的散列函数、简单来说就是对 N 取模 比如 
 
 ```java
 Hash (10 % 3 = 1)  
 ```
 
 就是一个简单的散列函数, 其实这就是一个散列删除.也就是大家熟知的Hash(Key). 这个Hash函数就是我们说的散列函数.我们通过它来计算散列的值的.重中之重.
+
+特征(特性)
+
+-   **确定性、冲突(碰撞)、不可逆、混淆性**
 
 
 
@@ -76,6 +84,156 @@ Hash (10 % 3 = 1)
 如下图所示
 
 ![image-20210611123440453](Data Structure.assets/image-20210611123440453.png)
+
+
+
+### 5、HashMap (Java)
+
+
+
+>   由于链表这种结构确实存在一些缺点，所以在我们的JDK中对之进行了优化，引入了更高效的数据结构：红黑树
+
+特性：
+
+**初始大小**：HashMap默认的初始大小是16，这个默认值是可以设置的，如果事先知道大概的数据量有多大，可以通过修改默认初始大小减少动态扩容的次数，这样会大大提高HashMap的性能
+
+**动态扩容**：最大装载因子默认是0.75，当HashMap中元素个数超过0.75*capacity（capacity表示散列表的容量）的时候，就会启动扩容每次扩容都会扩容为原来的两倍大小
+
+>   HashMap处理Hash冲突的办法：
+
+JDK1.7底层采用了链表法
+
+JDK1.8中、为了对HashMap做进一步优化,我们引入了红黑树.而当链表长度太长（默认超过8）时,链表就转换为红黑树.我们可以利用红黑树快速增删改查的特点, 提高 HashMap 的性能. 当红黑树结点个数少于8个的时候, 又会将红黑树转化为链表.
+
+因为在数据量较小的情况下、红黑树要维护平衡，比起链表来，性能上的优势并不明显
+
+
+
+### 6、自定义 Hash Table 实现
+
+```java
+package lee.learning.video.datastructure.hash;
+
+import java.util.TreeMap;
+
+/**
+ * 自定义的HashTable实现
+ */
+public class HashTable<K, V> {
+
+    private static final int upperTol = 10;
+    private static final int lowerTol = 2;
+    private static final int initCapacity = 7;
+
+    private TreeMap<K, V>[] hashtable;
+    private int size;
+    private int M;
+
+    public HashTable(int M){
+        this.M = M;
+        size = 0;
+        hashtable = new TreeMap[M];
+        for(int i = 0 ; i < M ; i ++)
+            hashtable[i] = new TreeMap<K, V>();
+    }
+
+    public HashTable(){
+        this(initCapacity);
+    }
+
+    private int hash(K key){
+        /**
+         * & 0x7fffffff 是去除32bit的首位也就是符号位
+         */
+        return (key.hashCode() & 0x7fffffff) % M;
+    }
+
+    public void add(K key, V value){
+        TreeMap<K, V> map = hashtable[hash(key)];
+        // if(!hashtable[hash(key)].containsKey(key)){
+        if(!map.containsKey(key)){
+            map.put(key, value);
+            size ++;
+
+            if(size >= upperTol * M)
+                resize(2 * M);
+        }
+    }
+
+    public V remove(K key){
+        V ret = null;
+        TreeMap<K, V> map = hashtable[hash(key)];
+        if(map.containsKey(key)){
+            ret = map.remove(key);
+            size --;
+
+            if(size <= lowerTol * M && M > initCapacity)
+                resize(M / 2);
+        }
+        return ret;
+    }
+
+    public void set(K key, V value){
+        TreeMap<K, V> map = hashtable[hash(key)];
+        if(!map.containsKey(key))
+            throw new IllegalArgumentException(key + " doesn't exist!");
+
+        map.put(key, value);
+    }
+
+    public boolean contains(K key){
+        return hashtable[hash(key)].containsKey(key);
+    }
+
+    public V get(K key){
+        return hashtable[hash(key)].get(key);
+    }
+
+    private void resize(int newM){
+        TreeMap<K, V>[] newHashTable = new TreeMap[newM];
+        for(int i = 0 ; i < newM ; i ++)
+            newHashTable[i] = new TreeMap<K, V>();
+
+        for(int i = 0 ; i < M ; i ++)
+            for(K key: hashtable[i].keySet())
+                newHashTable[hash(key)].put(key, hashtable[i].get(key));
+
+        this.M = newM;
+        this.hashtable = newHashTable;
+    }
+}
+```
+
+
+
+### 7、Hash 的应用
+
+
+
+1.加密：MD5 哈希算法.存在密码冲突 128位的二进制串.可以表示2^128次.md5(md5(),”1231”) 不可逆
+
+2.怎么判断视频是否是重复的？Md5（）；128位
+
+3.相似性检测：论文检测，指纹算法、会把每个论文计算出一个指纹，汉明距离
+
+4.负载均衡：nginx，2台服务器；可以根据ip计算hash，再做一个取模2运算
+
+5.分布系统：数据分库问题、10亿的数据的搜索词.一台机器存不下.要分成10个文件 Hash(key)%10 = > 就可以知道
+某个key在哪一个文件？扩大成数据库的 分表（10张表） id%10 =()
+
+6.分布式存储的时候：问题来了 如果我加了一张表。原来是10张，现在是11张了 怎么办？要重新计算，分配的时候查询怎么办？数据量很大迁移的不是太多了吗？
+
+7.查找算法:hashMap  查找
+
+>   一致性Hash：哈希环
+
+假设我们有k个表，数据的hash值范围：[0,Integer.max].我们把整个数据范围划分成n个区间（n个区间要远远大于我们的k）每一个表就是分配到n/k的区间. 当有新的表要来了，我们只需要将某几个小的区间数据迁移就可以了. 这是一个环形结构，其根本思想就是分段了
+
+![image-20210615095810770](Data Structure.assets/image-20210615095810770.png)
+
+
+
+
 
 ## 2、时间/空间复杂度入门
 
@@ -3890,7 +4048,414 @@ class TreeNode<T>{
 
 
 
+#### 1、问题思考
+
+
+
+最经典的线段树问题：区间染色问题、有一面墙，长度为 n，每次选择一段儿墙进行染色
+
+![image-20210615112800836](Data Structure.assets/image-20210615112800836.png)
+
+m次操作后，我们可以看见多少种颜色？
+m次操作后，我们可以在 [ i , j ] 区间内看见多少种颜色？染色操作[更新区间] 查询操作 [区间查询]
+
+>   另一类经典查询：区间查询
+
+![image-20210615112828607](Data Structure.assets/image-20210615112828607.png)
+
+查询一个区间 [ i , j ] 的最大值、最小值、或者区间数字和 、、、实质：基于区间的统计查询
+
+>   例如：2019年注册用户中消费最高的用户？消费最少的用户？学习时间最长的用户？
+
+分析：上面题目数据已经固定了在2019的.那假如要统计2019年至今的数据、那么由于数据是动态更新的，这时线段树就是一个很好的选择.
+
+
+
+#### 2、什么是线段树
+
+
+
+线段树，类似区间树，是一个`完全二叉树`，它在各个节点保存一条线段（数组中的一段子数组），主要用于高效解决连续区间的动态查询问题，由于二叉结构的特性，它基本能保持每个操作的复杂度为O(logn)
+
+![image-20210615112914583](Data Structure.assets/image-20210615112914583.png)
+
+|                      | 使用数组实现 | 使用线段树 |
+| -------------------- | ------------ | ---------- |
+| 染色操作（更新区间） | O(n)         | O(logn)    |
+| 查询操作（查询区间） | O(n)         | O(logn)    |
+
+-   线段树不是完全二叉树、线段树是平衡二叉树、堆也是平衡二叉树，因为有机质使节点最大的深度和最小的深度误差不超过 1
+-   如果区间有 n 个元素，数组表示需要多少个节点
+
+![image-20210615113032108](Data Structure.assets/image-20210615113032108.png)
+
+>   -   如果区间有n个元素、数组表示需要有多少个节点？
+>   -   需要 4n 的空间、我们的线段树不考虑添加元素、既区间固定，使用 4n 的静止空间即可
+
+![image-20210615113102642](Data Structure.assets/image-20210615113102642.png)
+
+
+
+>   线段树的创建：参考一下图片
+
+![image-20210615113138088](Data Structure.assets/image-20210615113138088.png)
+
+
+
+#### 3、线段树的代码实现
+
+
+
+-   线段树的接口定义
+
+```java
+/**
+ * 线段树的操作、求和、最大值、等等
+ * @param <T>
+ */
+public interface Merge<T> {
+    T merge(T var1, T var2);
+}
+```
+
+
+
+-   线段树的核心代码
+
+```java
+package lee.learning.video.datastructure.tree.segment;
+
+/**
+ * 线段树的数组实现
+ * @param <T>
+ */
+public class SegmentTree<T/* extends Comparable<? super T>*/> {
+    private T[] tree;
+    private T[] data;
+    private Merge<T> merge;
+
+    /**
+     * 将普通数组转为线段树存储
+     * @param arr
+     */
+    public SegmentTree(T[] arr, Merge<T> merge){
+        if(arr == null || arr.length == 0)
+            throw new IllegalArgumentException("The parameter array cannot be empty.");
+
+        this.merge = merge;
+        data = (T[]) new Object[arr.length];
+        for (int i = 0; i < arr.length; i++) {
+            data[i] = arr[i];
+        }
+
+        tree = (T[]) new Object[4 * arr.length];
+        createSegmentTree(0, 0, arr.length - 1);
+    }
+
+     /**
+     * 在treeIndex的位置上创建表示区间[left....right]的线段树
+     */
+    public void createSegmentTree(int treeIndex, int left, int right){
+
+        if(left == right){
+            tree[treeIndex] = data[left];
+            return;
+        }
+
+        int leftTreeIndex = leftChild(treeIndex);
+        int rightTreeIndex = rightChild(treeIndex);
+
+        /**
+         * 如果l + r的值太大相加会溢出、推荐以下写法
+         *   l + (r - l) / 2
+         */
+        int middle = (left + right) / 2;
+        createSegmentTree(leftTreeIndex, left, middle);
+        createSegmentTree(rightTreeIndex, middle + 1, right);
+
+        tree[treeIndex] = merge.merge(tree[leftTreeIndex], tree[rightTreeIndex]);
+    }
+
+    /**
+     * 返回线段树中区间[queryL ~ queryR]的值
+     */
+    public T query(int queryL, int queryR){
+        if(queryL < 0 || queryL >= data.length || queryR < 0 || queryR >= data.length || queryL > queryR)
+            throw new IllegalArgumentException("Index is illegal");
+        return query(0, 0, data.length - 1, queryL, queryR);
+    }
+
+    /**
+     * 在线段树中返回以treeIndex为根的 [startL ~ startR]的范围里，搜索区间[queryL ~ queryE]的值
+     */
+    private T query(int treeIndex, int startL, int endR, int queryL, int queryR){
+        if(startL == queryL && endR == queryR){
+            return tree[treeIndex];
+        }
+
+        int leftIndex = leftChild(treeIndex);
+        int rightIndex = rightChild(treeIndex);
+        int middle = (startL + endR) / 2;
+
+        if(queryR <= middle){
+            return query(leftIndex, startL, middle, queryL, queryR);
+        }else if(queryL > middle){
+            return query(rightIndex, middle + 1, endR, queryL, queryR);
+        }
+
+        T leftResult = query(leftIndex, startL, middle, queryL, middle);
+        T rightResult = query(rightIndex, middle + 1, endR, middle + 1, queryR);
+        return merge.merge(leftResult, rightResult);
+    }
+
+    /**
+     * 将index位置的值，更新为value
+     */
+    public void set(int index, T value){
+
+        if(index < 0 || index >= data.length)
+            throw new IllegalArgumentException("Index is illegal");
+
+        data[index] = value;
+        set(0, 0, data.length - 1, index, value);
+    }
+
+    /**
+     * 在以treeIndex为根的线段树中更新index的值为value
+     */
+    private void set(int treeIndex, int left, int right, int index, T value){
+
+        if(left == right){
+            tree[treeIndex] = value;
+            return;
+        }
+
+        int mid = left + (right - left) / 2;
+        // treeIndex的节点分为[left...mid]和[mid + 1...right]两部分
+        int leftTreeIndex = leftChild(treeIndex);
+        int rightTreeIndex = rightChild(treeIndex);
+
+        if(index >= mid + 1)
+            set(rightTreeIndex, mid + 1, right, index, value);
+        else
+            set(leftTreeIndex, left, mid, index, value);
+
+        tree[treeIndex] = merge.merge(tree[leftTreeIndex], tree[rightTreeIndex]);
+    }
+
+    public int getSize(){
+        return data.length;
+    }
+
+    public T get(int index){
+        if(index < 0 || index > data.length)
+            throw new ArrayIndexOutOfBoundsException();
+
+        return data[index];
+    }
+
+    /**
+     * 返回线段树中一个索引元素的左孩子索引
+     */
+    public int leftChild(int index){
+        if(index < 0 || index > data.length)
+            throw new ArrayIndexOutOfBoundsException();
+
+        return 2 * index + 1;
+    }
+
+    /**
+     * 返回线段树中一个索引元素的有孩子索引
+     */
+    public int rightChild(int index){
+        if(index < 0 || index > data.length)
+            throw new ArrayIndexOutOfBoundsException();
+
+        return 2 * index + 2;
+    }
+
+    @Override
+    public String toString(){
+        StringBuilder res = new StringBuilder();
+        res.append('[');
+        for(int i = 0 ; i < tree.length ; i ++){
+            if(tree[i] != null)
+                res.append(tree[i]);
+            else
+                res.append("null");
+
+            if(i != tree.length - 1)
+                res.append(", ");
+        }
+        res.append(']');
+        return res.toString();
+    }
+}
+
+class TestSegmentTree{
+    public static void main(String[] args) {
+        Integer[] nums = {1, 8, 4, -1, 5, 15, 9};
+        SegmentTree<Integer> segmentTree = new SegmentTree<>(nums, (var1, var2) -> var1 + var2);
+        System.out.println(segmentTree);
+
+        System.out.println("query:" + segmentTree.query(0, 3));
+    }
+}
+```
+
+
+
+
+
+
+
 ### 9、字典树 (TrieTree)
+
+
+
+#### 1、什么是 Trie Tree ？
+
+
+
+trie 树就是我们平常说的字典树，它是一种专门用来处理字符串匹配的数据结构。特别适合用来在很多字符串中快速查找某一个特定的字符串。前缀树、赫夫曼树，前缀编码
+
+
+
+>   Trie的数据结构：
+
+假设我们有以下几个英文单词：my name apple age sex，假如我们要查找里面某一个字符串是否存在
+
+![image-20210615112222243](Data Structure.assets/image-20210615112222243.png)
+
+>   Trie树的构建：
+
+我们要先将词分成一个个的字母，然后再依次插入到树中。如右图所示，根节点 root ，如果我们要插入 app 则首先将app 分成：a, p, p，然后从 root 点开始，一层层的插入，注意的是 P 会挂在 a 下面，后面的一个 p 会挂在前面的 p 上。单词的末尾我们就用紫色表示、这里需要注意我们插入的时候每一层的字母都是有序的
+
+![image-20210615112320687](Data Structure.assets/image-20210615112320687.png)
+
+
+
+>   Trie 树的查找：
+
+查找我们就从root点开始，再第一层找第一个字母，依次往下找到我们所要的单词、注意要找到末尾的标记才算完成一个单词的查找。比如app，我们要找ap、虽然字典树里面有ap，但是这个p不是紫色那么ap还是不存在字典树中的
+
+>   Trie 树的实现：
+
+其实Trie树就是一颗多叉树.这里我们应该要想到B+Tree&B-Tree.是有些类似的,Trie树又是巧妙的利用了数组的下标.因为英文字母刚好是26个.所以我们可以开 一个26长度的数组
+
+>   Trie 树的分析：
+
+时间复杂度：非常高效 O(单词的长度)
+空间复杂度：
+
+以空间来换效率的数据结构。因为每个单词理论上都有26个子节点，所有它的空间复杂度就是26^n，n表示的是树的高度
+
+>   Tire 优化：
+
+-   重复的字母不要重复建
+-   因为我们每个 node 都开了 26 个空间来存储节点。但实际情况可能不需要这么多，所以这里其实我们可以考虑用散列表来实现 这里大家可以去看 IK 的源码，当子节点少的时候是用的数组，但是节点大于 3 个是它是用的 hashMap，这个再一定的程度上是可以节省很多的空间的
+
+
+
+#### 2、Tire Tree 的代码实现
+
+```java
+package lee.learning.video.datastructure.tree.trie;
+
+import java.util.TreeMap;
+
+/**
+ * 字典树的练习
+ */
+public class Trie {
+    private int size;
+    private Node root;
+
+    private class Node{
+        public boolean isWord;
+        /**
+         * 字典树的节点定义、根据具体场景
+         *   如果只存储英文就可以用Node[26]作为指针.但是如果想存储更多映射、用TreeMap
+         */
+        public TreeMap<Character, Node> next;
+
+        public Node() {
+            this(false);
+        }
+        public Node(boolean isWord) {
+            this.isWord = isWord;
+            next = new TreeMap<>();
+        }
+    }
+
+    /**
+     * 向字典树中添加一个单词
+     * @param word
+     */
+    public void add(String word){
+        Node currentNode = root;
+        for (int i = 0; i < word.length(); i++) {
+            Character charValue = word.charAt(i);
+            if(currentNode.next.get(charValue) == null)
+                currentNode.next.put(charValue, new Node());
+            currentNode = currentNode.next.get(charValue);
+        }
+
+        //当前节点的isWord不为一个词的时候就进行词数++.
+        if(!currentNode.isWord){
+            currentNode.isWord = true;
+            size++;
+        }
+    }
+
+    /**
+     * 检索字典树中是否包含单词word
+     * @param word
+     * @return
+     */
+    public boolean contains(String word){
+        if(isEmpty()){
+            throw new NullPointerException("the trie is empty");
+        }
+        Node currentNode = root;
+        for (int i = 0; i < word.length(); i++) {
+            Character charValue = word.charAt(i);
+            if(currentNode.next.get(charValue) == null)
+                return false;
+            currentNode = currentNode.next.get(charValue);
+        }
+        return currentNode.isWord;
+    }
+
+    /**
+     * 判断单词word是否是前缀
+     *   word 也是 word的前缀
+     * @param word
+     * @return
+     */
+    public boolean isPrefix(String word){
+        if(isEmpty()){
+            throw new NullPointerException("the trie is empty");
+        }
+        Node currentNode = root;
+        for (int i = 0; i < word.length(); i++) {
+            Character charValue = word.charAt(i);
+            if(currentNode.next.get(charValue) == null)
+                return false;
+            currentNode = currentNode.next.get(charValue);
+        }
+        return true;
+    }
+
+    public int getSize(){
+        return size;
+    }
+
+    public boolean isEmpty(){
+        return root == null;
+    }
+}
+```
 
 
 
@@ -3898,7 +4463,647 @@ class TreeNode<T>{
 
 
 
+#### 1、并查集的实现
+
+
+
+##### 1、接口定义
+
+```java
+package lee.learning.video.datastructure.tree.union;
+
+/**
+ * 并查集的接口定义
+ */
+public interface Union_Find {
+
+    int getSize();
+    /**
+     * 判断 p 和 q 是否在同一个集合中
+     * @return
+     */
+    boolean isConnected(int p, int q);
+    /**
+     * 将 p 和 q 合并成一个并查集
+     */
+    void unionElements(int p, int q);
+}
+```
+
+
+
+##### 2、第一版并查集的实现
+
+```java
+/**
+ * 第一版并查集的实现
+ */
+public class UnionFind1 implements Union_Find {
+
+    /**
+     * 第一版的Union-Find本质就是一个数组
+     */
+    private int[] id;
+
+    public UnionFind1(int size) {
+        id = new int[size];
+        /**
+         * index：元素标识
+         * value：存储集合编号
+         * 初始化、每一个id[i]都指向自己、没有合并的元素
+         */
+        for (int i = 0; i < size; i++) {
+            id[i] = i;
+        }
+    }
+
+    public int getSize() {
+        return id.length;
+    }
+
+    /**
+     * 查找元素p所对应的集合编号
+     * @return
+     */
+    private int find(int p){
+        if(p < 0 || p >= id.length)
+            throw new IllegalArgumentException("p is out of bound.");
+        return id[p];
+    }
+
+    /**
+     * 查看元素p和元素q是否所属一个集合
+     * @return
+     */
+    public boolean isConnected(int p, int q) {
+        return find(p) == find(q);
+    }
+
+    /**
+     * 合并元素p和元素q所属的集合
+     */
+    public void unionElements(int p, int q) {
+
+        int pID = find(p);
+        int qID = find(q);
+
+        if(pID == qID) return;
+
+        /**
+         * 合并需要遍历一边所有元素、将一个集合的编号修改为另一个的编号
+         */
+        for (int i = 0; i < id.length; i++) {
+            if(id[i] == pID)
+                id[i] = qID;
+        }
+    }
+}
+```
+
+
+
+##### 3、第二版的并查集的实现
+
+```java
+public class UnionFind2 implements Union_Find{
+
+    /**
+     * 使用一个数组构建一课指向父亲节点的树
+     * parent[i]表示一个元素所指向的父节点
+     */
+    private int[] parent;
+
+    public UnionFind2(int size) {
+
+        parent = new int[size];
+        //初始化每一个parent[i]指向自己、表示每一个元素自己自成一个集合
+        for (int i = 0; i < size; i++) {
+            parent[i] = i;
+        }
+    }
+
+    public int getSize() {
+        return parent.length;
+    }
+
+    /**
+     * 查找元素p所对应的集合编号
+     * O(h)的时间复杂度、h为数的高度
+     * @return
+     */
+    private int find(int p){
+        if(p < 0 || p >= parent.length)
+            throw new IllegalArgumentException("p is out of bound.");
+
+        /**
+         * 不断去查询自己的父亲节点、直到到达根节点
+         * 根节点的特点：parent[p] == p
+         */
+        while(p != parent[p])
+            p = parent[p];
+        return p;
+    }
+
+    /**
+     * 查看 p 和 q 是否同属一个集合
+     * @return
+     */
+    public boolean isConnected(int p, int q) {
+        return find(p) == find(q);
+    }
+
+    /**
+     * 合并元素 p 和 元素 q 所属的集合
+     */
+    public void unionElements(int p, int q) {
+
+        int pRoot = find(p);
+        int qRoot = find(q);
+
+        if(pRoot == qRoot)
+            return;
+
+        parent[pRoot] = qRoot;
+    }
+}
+```
+
+
+
+##### 4、第三版并查集的实现
+
+```java
+/**
+ * 第三版并查集的实现
+ *   基于size的优化、两个集合合并的时候size小的合并到size多的上面
+ */
+public class UnionFind3 implements Union_Find{
+
+    //parent[i]表示第一个元素所指向的父节点
+    private int[] parent;
+    //size[i]表示以i为根的集合中元素个数
+    private int[] size;
+
+    public UnionFind3(int size) {
+        parent = new int[size];
+        this.size = new int[size];
+
+        for (int i = 0; i < size; i++) {
+            parent[i] = i;
+            //初始化每个集合数量都是1
+            this.size[i] = 1;
+        }
+    }
+
+    public int getSize() {
+        return parent.length;
+    }
+
+    /**
+     * 查找元素p所对应的集合编号
+     * O(h)的时间复杂度、h为数的高度
+     * @return
+     */
+    private int find(int p){
+        if(p < 0 || p >= parent.length)
+            throw new IndexOutOfBoundsException("index：" + p);
+
+        /**
+         * 不断去查询自己的父亲节点、直到到达根节点
+         * 根节点的特点：parent[p] == p
+         */
+        while(p != parent[p])
+            p = parent[p];
+        return p;
+    }
+
+    /**
+     * 查看 p 和 q 是否同属一个集合
+     * @return
+     */
+    public boolean isConnected(int p, int q) {
+        return find(p) == find(q);
+    }
+
+    /**
+     * 合并元素 p 和 元素 q 所属的集合
+     *   基于size的优化、两个集合合并的时候size小的合并到size多的上面
+     */
+    public void unionElements(int p, int q) {
+
+        int pRoot = find(p);
+        int qRoot = find(q);
+
+        if(pRoot == qRoot)
+            return;
+
+        /**
+         * 根据两个元素所在树的元素个数不同判断合并方向
+         * 将元素个数少的集合合并到元素个数多的集合上
+         */
+        if(size[pRoot] < size[qRoot]){
+            parent[pRoot] = qRoot;
+            size[qRoot] += size[pRoot];
+        }else{
+            parent[qRoot] = pRoot;
+            size[pRoot] += size[qRoot];
+        }
+    }
+}
+```
+
+
+
+##### 5、第四版并查集的实现
+
+```java
+/**
+ * 第四版并查集的实现
+ *   基于rank(深度/层数)的优化,将层数小的合并到层数大的
+ */
+public class UnionFind4 implements Union_Find{
+
+    /**
+     * rank [i] 表示以i为根的集合所表示的树的层数
+     */
+    private int[] rank;
+    /**
+     * parent [i] 表示第i个元素所指向的父节点
+     */
+    private int[] parent;
+
+    public UnionFind4(int size) {
+        rank = new int[size];
+        parent = new int[size];
+
+        //初始化每一个parent[i]都指向自己，表示自成一个集合
+        //初始化每一个rank[i]的层数都为 1
+        for (int i = 0; i < size; i++) {
+            parent[i] = i;
+            rank[i] = 1;
+        }
+    }
+
+    public int getSize() {
+        return parent.length;
+    }
+
+    /**
+     * 查找元素p所对应的集合编号
+     * O(h)的时间复杂度、h为数的高度
+     * @return
+     */
+    private int find(int p){
+        if(p < 0 || p >= parent.length)
+            throw new IllegalArgumentException("p is out of bound.");
+
+        while(p != parent[p])
+            p = parent[p];
+        return p;
+    }
+
+    /**
+     * 查看 p 和 q 是否同属一个集合
+     * @return
+     */
+    public boolean isConnected(int p, int q) {
+        return find(p) == find(q);
+    }
+
+    /**
+     * 合并元素 p 和 元素 q 所属的集合
+     *   基于rank的优化、合并时小的层数合并到多的层次上面
+     */
+    public void unionElements(int p, int q) {
+
+        int pRoot = find(p);
+        int qRoot = find(q);
+
+        if (pRoot == qRoot)
+            return;
+
+        /**
+         * 根据两个元素所在树的rank不同判断合并方向
+         * 将rank低的集合合并到rank高的集合上
+         */
+        if(rank[pRoot] < rank[qRoot]){
+            parent[pRoot] = qRoot;
+        }else if(rank[pRoot] > rank[qRoot]){
+            parent[qRoot] = pRoot;
+        }else{
+            parent[pRoot] = qRoot;
+            rank[qRoot] += 1;
+        }
+    }
+}
+```
+
+
+
+##### 6、第五版并查集的实现
+
+```java
+/**
+ * 第五版并查集的实现
+ *   路径压缩
+ *   基于rank(深度/层数)的优化,将层数小的合并到层数大的
+ */
+public class UnionFind5 implements Union_Find {
+    /**
+     * rank [i] 表示以i为根的集合所表示的树的层数
+     * 在后续的代码中, 我们并不会维护rank的语意, 也就是rank的值在路径压缩的过程中, 有可能不在是树的层数值
+     * 这也是我们的rank不叫height或者depth的原因, 他只是作为比较的一个标准
+     */
+    private int[] rank;
+    /**
+     * parent [i] 表示第i个元素所指向的父节点
+     */
+    private int[] parent;
+
+    public UnionFind5(int size) {
+        rank = new int[size];
+        parent = new int[size];
+
+        //初始化每一个parent[i]都指向自己，表示自成一个集合
+        //初始化每一个rank[i]的层数都为 1
+        for (int i = 0; i < size; i++) {
+            parent[i] = i;
+            rank[i] = 1;
+        }
+    }
+
+    public int getSize() {
+        return parent.length;
+    }
+
+    /**
+     * 查找元素p所对应的集合编号
+     * O(h)的时间复杂度、h为数的高度
+     * @return
+     */
+    private int find(int p){
+        if(p < 0 || p >= parent.length)
+            throw new IllegalArgumentException("p is out of bound.");
+
+        while(p != parent[p]){
+            //查询的时候进行路径压缩
+            parent[p] = parent[parent[p]];
+            p = parent[p];
+        }
+        return p;
+    }
+
+    /**
+     * 查看 p 和 q 是否同属一个集合
+     * @return
+     */
+    public boolean isConnected(int p, int q) {
+        return find(p) == find(q);
+    }
+
+    /**
+     * 合并元素 p 和 元素 q 所属的集合
+     *   基于rank的优化、合并时小的层数合并到多的层次上面
+     */
+    public void unionElements(int p, int q) {
+
+        int pRoot = find(p);
+        int qRoot = find(q);
+
+        if (pRoot == qRoot)
+            return;
+
+        /**
+         * 根据两个元素所在树的rank不同判断合并方向
+         * 将rank低的集合合并到rank高的集合上
+         */
+        if(rank[pRoot] < rank[qRoot]){
+            parent[pRoot] = qRoot;
+        }else if(rank[pRoot] > rank[qRoot]){
+            parent[qRoot] = pRoot;
+        }else{
+            parent[pRoot] = qRoot;
+            rank[qRoot] += 1;
+        }
+    }
+}
+```
+
+
+
 ### 11、堆树 (Heap Tree)
+
+
+
+#### 1、堆树的定义
+
+
+
+-   堆树是一颗完全二叉树
+-   其每一个节点的值都大于等于(大顶堆)或者小于等于(小顶堆)其左右子节点的值.如下
+
+>   大顶堆：就是根节点是最大的值.
+
+![image-20210611231147142](Data Structure.assets/image-20210611231147142.png)
+
+>   小顶堆：根节点是最小的值
+
+![image-20210611231241591](Data Structure.assets/image-20210611231241591.png)
+
+#### 2、堆树的操作：
+
+
+
+##### 1、堆的插入操作(两种实现方式)：
+
+
+
+ **从下往上**：如果我们要在一个堆树插入9、如下图演示，插入9之后是不满足堆树的性质的.需要根父节点就行交换下.交换后如果父节点还大于祖父节点就继续交换
+
+![image-20210611231344793](Data Structure.assets/image-20210611231344793.png)
+
+
+
+**从上往下 和 1 相反**
+
+其实插入的过程叫做堆化. 以数组为实现方式下标从0开始的左右节点计算公式：
+
+```apl
+2 * i + 1            2 * i + 2
+```
+
+
+
+##### 2、堆的删除
+
+
+
+逻辑删除：就是新增一个字段标识节点是否被删除、删除的时候就标志为删除状态.
+
+-   缺点：在一些对内存和性能要求比较高的系统中不适用、因为大量的删除操作会浪费大量的存储空间
+
+交换节点删除：假如要删除10这个根节点、那么需要把10和3先做交换(这样可以保持完全二叉树的特性)、然后3变根节点，在对3从上往下做堆化. 再把10删除了就行了
+
+![image-20210611231612766](Data Structure.assets/image-20210611231612766.png)
+
+在对3进行堆化的时候、至于该和左右子节点哪个交换位置、完全取决于左右子节点哪个大.
+
+
+
+#### 3、堆树的实现(大顶堆)
+
+```java
+package lee.learning.video.datastructure.tree.maxheap;
+
+import lee.learning.video.datastructure.array.Array;
+
+/**
+ * 堆树
+ *  大顶堆的构建
+ */
+public class MaxHeap<T extends Comparable<? super T>> {
+
+    private Array<T> array;
+
+    public MaxHeap(){
+        array = new Array<T>();
+    }
+
+    public MaxHeap(int capacity){
+        array = new Array<T>(capacity);
+    }
+
+    public int getSize(){
+        return array.getSize();
+    }
+
+    public boolean isEmpty(){
+        return array.isEmpty();
+    }
+
+    /**
+     * 返回完全二叉树中一个索引元素的父亲的索引
+     */
+    public int parent(int index){
+        if(index < 0 || index > array.getSize())
+            throw new ArrayIndexOutOfBoundsException();
+
+        if(index == 0)
+            throw new IllegalArgumentException("index-0 doesn't have parent.");
+
+        return (index - 1) / 2;
+    }
+
+    /**
+     * 返回完全二叉树中一个索引元素的左孩子索引
+     */
+    public int leftChild(int index){
+        if(index < 0 || index > array.getSize())
+            throw new ArrayIndexOutOfBoundsException();
+
+        return index * 2 + 1;
+    }
+
+    /**
+     * 返回完全二叉树中一个索引元素的有孩子索引
+     */
+    public int rightChild(int index){
+        if(index < 0 || index > array.getSize())
+            throw new ArrayIndexOutOfBoundsException();
+
+        return index * 2 + 2;
+    }
+
+    //向堆中添加元素
+    public void add(T value){
+        array.addLast(value);
+        siftUp(array.getSize() - 1);
+    }
+
+    /**
+     * 上浮、堆化
+     *   如果当前节点的值大于父节点的值,就交换两个元素的位置.循环如此
+     */
+    public void siftUp(int index){
+        T parent = array.get(parent(index));
+        T currValue = array.get(index);
+        while(index > 0 && currValue.compareTo(parent) > 0){
+            array.swap(parent(index), index);
+        }
+    }
+
+    public T findMax(){
+        if(array.isEmpty()){
+            throw new IllegalArgumentException("Can not findMax when heap is empty.");
+        }
+        return array.get(0);
+    }
+
+    /**
+     * 取出堆树中的最大元素
+     *   堆顶索引0就是最大元素、删除后为了维护堆的性质，将首位交换位置，在做下浮的堆化操作
+     */
+    public T extractMax(){
+        T maxValue = findMax();
+        array.swap(0, array.getSize() - 1);
+        array.removeLast();
+        siftDown(0);
+        return maxValue;
+    }
+
+    /**
+     * 下浮、堆化
+     *   将堆顶与左右子树作比较、然后和最大的子树交换位置、依次循环
+     */
+    public void siftDown(int index){
+        while(leftChild(index) < array.getSize()){
+            //默认最大元素为左子树
+            int maxIndex = leftChild(index);
+            //将左子树和右子树作比较、右子树大就重新赋值
+            if(array.get(maxIndex).compareTo(array.get(maxIndex + 1)) < 0)
+                maxIndex = rightChild(index);
+
+            if(array.get(index).compareTo(array.get(maxIndex)) < 0){
+                array.swap(index, maxIndex);
+                index = maxIndex;
+            }else{
+                break;
+            }
+        }
+    }
+
+    /**
+     * 返回旧的最大元素、并替换
+     * @param value
+     * @return
+     */
+    public T replaceMax(T value){
+        T maxValue = findMax();
+        array.set(0, value);
+        siftDown(0);
+        return maxValue;
+    }
+
+    /**
+     * 将一个无序的数组堆化
+     */
+    public void heapify(T[] arrays){
+        array = new Array<>(arrays);
+
+        for (int i = parent(array.getSize()); i >= 0; i--) {
+            siftDown(i);
+        }
+    }
+}
+```
+
+
+
+#### 4、堆排序
+
+
+
+>   见排序算法部分
 
 
 
@@ -3906,7 +5111,803 @@ class TreeNode<T>{
 
 
 
+#### 1、平衡二叉树 AVL Tree 实现
+
+```java
+package lee.learning.video.datastructure.tree.avl;
+
+import java.util.ArrayList;
+
+/**
+ * AVL Tree 的实现
+ *   底层结构是基于 K V 的二分搜索树
+ *   注意：removeMin 和 removeMax 函数均未实现 AVL 的平衡机制(已删减)、实现参考 remove 函数的平衡维护
+ */
+public class AVLTree<K extends Comparable<? super K>, V> {
+
+    private int size;
+    private Node root;
+
+    public AVLTree() {
+        size = 0;
+        root = null;
+    }
+
+    private class Node{
+        public K key;
+        public V value;
+        //AVL Tree 的高度值
+        public int height;
+        public Node left, right;
+
+        public Node(K key, V value) {
+            this.key = key;
+            this.value = value;
+            this.height = 1;
+            this.left = right = null;
+        }
+    }
+
+    /**
+     * 向二分搜索树中添加元素(key, value)
+     */
+    public void add(K key, V value){
+        size++;
+        root = add(root, key, value);
+    }
+
+    /**
+     * 向以node为根的二分搜索树中插入元素(key, value).递归算法
+     * 返回插入新节点后的二分搜索树的根
+     */
+    private Node add(Node node, K key, V value){
+
+        if(node == null)
+            return new Node(key, value);
+
+        int compareResult = key.compareTo(node.key);
+
+        if(compareResult < 0){
+            node.left = add(node.left, key, value);
+        }else if(compareResult > 0){
+            node.right = add(node.right, key, value);
+        }else{
+            node.value = value;
+        }
+
+        //更新 height 值
+        node.height = 1 + Math.max(getHeight(node.left), getHeight(node.right));
+        //计算平衡因子
+        int balanceFactor = getBalanceFactor(node);
+
+        //平衡维护
+        //LL
+        if (balanceFactor > 1 && getBalanceFactor(node.left) >= 0)
+            return rightRotate(node);
+
+        // RR
+        if (balanceFactor < -1 && getBalanceFactor(node.right) <= 0)
+            return leftRotate(node);
+
+        //LR
+        if (balanceFactor > 1 && getBalanceFactor(node.left) < 0) {
+            node.left = leftRotate(node.left);
+            return rightRotate(node);
+        }
+
+        // RL
+        if (balanceFactor < -1 && getBalanceFactor(node.right) > 0) {
+            node.right = rightRotate(node.right);
+            return leftRotate(node);
+        }
+
+        return node;
+    }
+
+    /**
+     * 删除 key 并返回所对应的 value
+     * @param key
+     */
+    public V remove(K key){
+        checkTreeEmpty();
+        Node node = getNode(root, key);
+        if(node != null){
+            size--;
+            root = remove(root, key);
+            return node.value;
+        }
+        return null;
+    }
+
+    /**
+     * 删除 key 并返回所对应的节点
+     * @return
+     */
+    private Node remove(Node node, K key){
+        if(node == null)
+            return null;
+
+        Node retNode = null;
+        int compareResult = key.compareTo(node.key);
+
+        if(compareResult < 0){
+            node.left = remove(node.left, key);
+            retNode = node;
+        }else if(compareResult > 0){
+            node.right = remove(node.right, key);
+            retNode = node;
+        }else{
+
+            if(node.left == null){
+                Node nodeR = node.right;
+                node.right = null;
+                retNode = nodeR;
+            }
+            else if(node.right == null){
+                Node nodeL = node.left;
+                node.left = null;
+                retNode = nodeL;
+            }
+            else {
+                Node successor = findMin(node.right);
+                successor.right = remove(node.right, successor.key);
+                successor.left = node.left;
+
+                node.left = node.right = null;
+
+                retNode = successor;
+            }
+        }
+
+        if(retNode == null) return null;
+
+        //更新 height 值
+        retNode.height = 1 + Math.max(getHeight(retNode.left), getHeight(retNode.right));
+
+        //计算平衡因子
+        int balanceFactor = getBalanceFactor(retNode);
+
+        //平衡性维护
+        //LL
+        if(balanceFactor > 1 && getBalanceFactor(retNode.left) >= 0)
+            return rightRotate(retNode);
+
+        //RR
+        if(balanceFactor < -1 && getBalanceFactor(retNode.right) <= 0)
+            return leftRotate(retNode);
+
+        //LR
+        if(balanceFactor > 1 && getBalanceFactor(retNode.left) < 0){
+            retNode.left = leftRotate(retNode.left);
+            return rightRotate(retNode);
+        }
+
+        //RL
+        if(balanceFactor < -1 && getBalanceFactor(retNode.right) > 0){
+            retNode.right = rightRotate(retNode.right);
+            return leftRotate(retNode);
+        }
+
+        return retNode;
+    }
+
+    // 对节点y进行向右旋转操作，返回旋转后新的根节点x
+    //        y                              x
+    //       / \                           /   \
+    //      x   T4     向右旋转 (y)        z     y
+    //     / \       - - - - - - - ->    / \   / \
+    //    z   T3                       T1  T2 T3 T4
+    //   / \
+    // T1   T2
+    private Node rightRotate(Node y){
+        Node x = y.left;
+        Node T3 = x.right;
+
+        //向右旋转过程
+        x.right = y;
+        y.left = T3;
+
+        //更新height
+        y.height = Math.max(getHeight(y.left), getHeight(y.right)) + 1;
+        x.height = Math.max(getHeight(x.left), getHeight(x.right)) + 1;
+
+        return x;
+    }
+
+    // 对节点y进行向左旋转操作，返回旋转后新的根节点x
+    //    y                             x
+    //  /  \                          /   \
+    // T1   x      向左旋转 (y)       y     z
+    //     / \   - - - - - - - ->   / \   / \
+    //   T2  z                     T1 T2 T3 T4
+    //      / \
+    //     T3 T4
+    private Node leftRotate(Node y){
+        Node x = y.right;
+        Node T2 = x.left;
+
+        //向左旋转过程
+        x.left = y;
+        y.right = T2;
+
+        //更新height
+        y.height = Math.max(getHeight(y.left), getHeight(y.right)) + 1;
+        x.height = Math.max(getHeight(x.left), getHeight(x.right)) + 1;
+
+        return x;
+    }
+
+    /**
+     * 根据 key 取得对应的 value 值
+     */
+    public V get(K key){
+        Node node = getNode(root, key);
+        return node == null ? null : node.value;
+    }
+
+    /**
+     * 将 key 对应的 value 修改为新的 newValue 值
+     */
+    public void set(K key, V newValue){
+
+        Node updateNode = getNode(root, key);
+
+        if(updateNode == null)
+            throw new IllegalArgumentException(key + " doesn't exist!");
+
+        updateNode.value = newValue;
+    }
+
+    /**
+     * 取得节点node的高度值
+     * @param node
+     */
+    private int getHeight(Node node){
+        if(node == null)
+            return 0;
+        return node.height;
+    }
+
+    /**
+     * 获取节点 node 的平衡因子
+     * @param node
+     */
+    private int getBalanceFactor(Node node){
+        if(node == null)
+            return 0;
+        return getHeight(node.left) - getHeight(node.right);
+    }
+
+    /**
+     * 判断该二叉树是否是一颗平衡二叉树
+     * @return
+     */
+    public boolean isBalanced(){
+        return isBalanced(root);
+    }
+
+    /**
+     * 判断以 Node 为根的二叉树是否是一颗平衡二叉树
+     * @param node
+     */
+    private boolean isBalanced(Node node){
+        if(node == null)
+            return true;
+
+        int balanceFactor = getBalanceFactor(node);
+        if(Math.abs(balanceFactor) > 1)
+            return false;
+        return isBalanced(node.left) && isBalanced(node.right);
+    }
+
+    /**
+     * 判断该树是否是一个二分搜索树
+     * @return
+     */
+    public boolean isBinarySearchTree(){
+
+        ArrayList<K> keys = new ArrayList<K>();
+        inOrder(root, keys);
+
+        for (int i = 1; i < keys.size(); i++) {
+            if(keys.get(i - 1).compareTo(keys.get(i)) > 0){
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * 中序遍历出来的值都是以此递增的
+     * @param keys
+     */
+    private void inOrder(Node node, ArrayList<K> keys){
+        if(node == null)
+            return;
+
+        inOrder(node, keys);
+        keys.add(node.key);
+        inOrder(node, keys);
+    }
+
+    public void inOrder(){
+        inOrder(root);
+    }
+
+    private void inOrder(Node node){
+        if(node == null)
+            return;
+
+        inOrder(node.left);
+        System.out.print(node.key + " ");
+        inOrder(node.right);
+    }
+
+    /**
+     * 判断key是否存在
+     */
+    public boolean contains(K key){
+        return getNode(root, key) != null;
+    }
+
+    /**
+     * 返回以node为根节点的二分搜索树中 key 所在的节点
+     */
+    private Node getNode(Node node, K key){
+        if(node == null)
+            return null;
+
+        if(key.equals(node.key)){
+            return node;
+        }else if(key.compareTo(node.key) < 0){
+            return getNode(node.left, key);
+        }else{
+            return getNode(node.right, key);
+        }
+    }
+
+    /**
+     * 返回最小值
+     */
+    public V findMin(){
+        checkTreeEmpty();
+        return findMin(root).value;
+    }
+
+    /**
+     * 返回最小节点
+     * @param node
+     */
+    private Node findMin(Node node){
+        if(node.left == null)
+            return node;
+        return findMin(node.left);
+    }
+
+    /**
+     * 返回最大值
+     */
+    public V findMax(){
+        checkTreeEmpty();
+        return findMax(root).value;
+    }
+
+    /**
+     * 返回最大节点
+     * @param node
+     */
+    private Node findMax(Node node){
+        if(node.right == null)
+            return node;
+        return findMax(node.right);
+    }
+
+    private int getSize(){
+        return size;
+    }
+
+    private boolean isEmpty(){
+        return root == null;
+    }
+
+    private void checkTreeEmpty(){
+        if(root == null){
+            throw new RuntimeException("Binary search tree is empty");
+        }
+    }
+
+    public static void main(String[] args) {
+        AVLTree avlTree = new AVLTree();
+        avlTree.add(20, "a");
+        avlTree.add(23, "b");
+        avlTree.add(21, "c");
+        avlTree.add(12, "d");
+        avlTree.add(14, "e");
+        avlTree.add(9, "f");
+        avlTree.add(19, "g");
+        avlTree.add(28, "h");
+        avlTree.add(10, "i");
+        avlTree.add(25, "j");
+        avlTree.add(24, "k");
+
+        //init show
+        avlTree.show();
+
+        System.out.println("\nsize：" + avlTree.getSize());
+        System.out.println("find Max：" + avlTree.findMax());
+        System.out.println("find Min：" + avlTree.findMin());
+    }
+}
+```
+
+
+
 ### 13、红黑树(Red Black Tree)
+
+
+
+#### 1、红黑树的代码实现
+
+
+
+>    左倾红黑树的实现
+>   *    相对而言、因为红黑树的实现过于繁杂、因此出现了红黑树的变种-左倾红黑树
+>   *    代码实现相对而言简单、它满足了许多原始设计目标，并且导致插入/删除的代码简单的多，仅需要常用实现代码的四分之一
+>   *    注意：这并不是红黑树的唯一实现、相比还有右倾、典型红黑树的实现 jdk1.8里的hashMap底层红黑树并不是左倾红黑树的实现
+
+```java
+public class LLRBTree<K extends Comparable<? super K>, V> {
+
+    private static final boolean RED = true;
+    private static final boolean BLACK = false;
+
+    private int size;
+    private Node root;
+
+    public LLRBTree() {
+        size = 0;
+        root = null;
+    }
+
+    //节点定义
+    private class Node{
+        public K key;
+        public V value;
+        public boolean color;
+        public Node left, right;
+
+        public Node(K key, V value){
+            this.key = key;
+            this.value = value;
+            //默认插入红色节点
+            this.color = RED;
+            left = right = null;
+        }
+    }
+
+    private boolean isRed(Node node){
+        if(node == null)
+            return BLACK;
+        return node.color;
+    }
+
+    /**
+     * 颜色反转
+     * @param node
+     */
+    private void flipColors(Node node){
+        node.color = RED;
+        node.left.color = BLACK;
+        node.right.color = BLACK;
+    }
+
+    //   node                     x
+    //  /   \     左旋转         /  \
+    // T1   x   --------->   node   T3
+    //     / \              /   \
+    //    T2 T3            T1   T2
+    private Node leftRotate(Node node){
+
+        Node x = node.right;
+
+        //左旋转换
+        node.right = x.left;
+        x.left = node;
+
+        x.color = node.color;
+        node.color = RED;
+
+        return x;
+    }
+
+    //     node                   x
+    //    /   \     右旋转       /  \
+    //   x    T2   ------->   y   node
+    //  / \                       /  \
+    // y  T1                     T1  T2
+    private Node rightRotate(Node node){
+
+        Node x = node.left;
+
+        //右旋转换
+        node.left = x.right;
+        x.right = node;
+
+        x.color = node.color;
+        node.color = RED;
+
+        return x;
+    }
+
+    /**
+     * 向红黑树中添加元素(key, value)
+     */
+    public void add(K key, V value){
+        size++;
+        root = add(root, key, value);
+        //根节点始终为黑色
+        root.color = BLACK;
+    }
+
+    /**
+     * 向以node为根的红黑树中插入元素(key, value).递归算法
+     * 返回插入新节点后的红黑树的根
+     */
+    private Node add(Node node, K key, V value){
+
+        if(node == null)
+            return new Node(key, value);
+
+        int compareResult = key.compareTo(node.key);
+
+        if(compareResult < 0){
+            node.left = add(node.left, key, value);
+        }else if(compareResult > 0){
+            node.right = add(node.right, key, value);
+        }else{
+            node.value = value;
+        }
+
+        if(isRed(node.right) && !isRed(node.left))
+            node = leftRotate(node);
+
+        if(isRed(node.left) && isRed(node.left.left))
+            node = rightRotate(node);
+
+        if(isRed(node.left) && isRed(node.right))
+            flipColors(node);
+
+        return node;
+    }
+
+    /**
+     * 删除 key 并返回所对应的 value
+     * @param key
+     */
+    public V remove(K key){
+        checkTreeEmpty();
+        size--;
+        Node node = getNode(root, key);
+        if(node != null){
+            root = remove(root, key);
+            return node.value;
+        }
+        return null;
+    }
+
+    /**
+     * 删除 key 并返回所对应的节点
+     * @return
+     */
+    private Node remove(Node node, K key){
+        if(node == null)
+            return null;
+
+        int compareResult = key.compareTo(node.key);
+
+        if(compareResult < 0){
+            node.left = remove(node.left, key);
+            return node;
+        }else if(compareResult > 0){
+            node.right = remove(node.right, key);
+            return node;
+        }else{
+
+            if(node.left == null){
+                Node nodeR = node.right;
+                node.right = null;
+                return nodeR;
+            }
+
+            if(node.right == null){
+                Node nodeL = node.left;
+                node.left = null;
+                return nodeL;
+            }
+
+            Node successor = findMin(node.right);
+            successor.right = removeMin(node.right);
+            successor.left = node.left;
+
+            node.left = node.right = null;
+
+            return successor;
+        }
+    }
+
+    /**
+     * 根据 key 取得对应的 value 值
+     */
+    public V get(K key){
+        Node node = getNode(root, key);
+        return node == null ? null : node.value;
+    }
+
+    /**
+     * 将 key 对应的 value 修改为新的 newValue 值
+     */
+    public void set(K key, V newValue){
+
+        Node updateNode = getNode(root, key);
+        if(updateNode == null)
+            throw new IllegalArgumentException(key + " doesn't exist!");
+
+        updateNode.value = newValue;
+    }
+
+    /**
+     * 判断key是否存在
+     */
+    public boolean contains(K key){
+        return getNode(root, key) != null;
+    }
+
+    /**
+     * 返回以node为根节点的红黑树中 key 所在的节点
+     */
+    private Node getNode(Node node, K key){
+
+        if(node == null)
+            return null;
+
+        if(key.equals(node.key)){
+            return node;
+        }else if(key.compareTo(node.key) < 0){
+            return getNode(node.left, key);
+        }else{
+            return getNode(node.right, key);
+        }
+    }
+
+    /**
+     * 删除并返回最小值
+     * @return
+     */
+    public V removeMin(){
+        checkTreeEmpty();
+
+        size--;
+        V minValue = findMin();
+        root = removeMin(root);
+        return minValue;
+    }
+
+    /**
+     * 删除并返回最小值所在节点
+     * @param node
+     */
+    private Node removeMin(Node node){
+        if(node.left == null){
+            Node nodeR = node.right;
+            node.right = null;
+            return nodeR;
+        }
+
+        node.left = removeMin(node.left);
+        return node;
+    }
+
+    /**
+     * 删除并返回最大值
+     * @return
+     */
+    public V removeMax(){
+        checkTreeEmpty();
+
+        size--;
+        V maxValue = findMax();
+        root = removeMax(root);
+        return maxValue;
+    }
+
+    /**
+     * 删除并返回最大值节点
+     * @param node
+     */
+    private Node removeMax(Node node){
+        if(node.right == null){
+            Node nodeL = node.left;
+            node.left = null;
+            return nodeL;
+        }
+        node.right = removeMax(node.right);
+        return node;
+    }
+
+    /**
+     * 返回最小值
+     */
+    public V findMin(){
+        checkTreeEmpty();
+        return findMin(root).value;
+    }
+
+    /**
+     * 返回最小节点
+     * @param node
+     */
+    private Node findMin(Node node){
+        if(node.left == null)
+            return node;
+        return findMin(node.left);
+    }
+
+    /**
+     * 返回最大值
+     */
+    public V findMax(){
+        checkTreeEmpty();
+        return findMax(root).value;
+    }
+
+    /**
+     * 返回最大节点
+     * @param node
+     */
+    private Node findMax(Node node){
+        if(node.right == null)
+            return node;
+        return findMax(node.right);
+    }
+
+    private int getSize(){
+        return size;
+    }
+
+    private boolean isEmpty(){
+        return root == null;
+    }
+
+    private void checkTreeEmpty(){
+        if(root == null){
+            throw new RuntimeException("LLRB search tree is empty");
+        }
+    }
+
+    public static void main(String[] args) {
+        LLRBTree bsTree = new LLRBTree();
+        bsTree.add(20, "a");
+        bsTree.add(23, "b");
+        bsTree.add(21, "c");
+        bsTree.add(12, "d");
+        bsTree.add(14, "e");
+        bsTree.add(9, "f");
+        bsTree.add(19, "g");
+        bsTree.add(28, "h");
+        bsTree.add(10, "i");
+        bsTree.add(25, "j");
+        bsTree.add(24, "k");
+        bsTree.add(30, "k");
+        bsTree.add(29, "k");
+
+        //init show
+        bsTree.show();
+
+        System.out.println("\nfind Max：" + bsTree.findMax());
+        System.out.println("find Min：" + bsTree.findMin());
+    }
+}
+```
 
 
 
@@ -3914,25 +5915,658 @@ class TreeNode<T>{
 
 
 
-### 15、图论结构 (Graph)
+#### 1、小节前思考问题
 
 
 
+>   1、作为一个IT从业者大家对数据库肯定是都知道的
+
+大家应该知道在数据库中有个索引，在一张表中用了索引与不用索引那查找效率简直就是天壤之别，但是大家有没思考过？你经常用的索引是什么样的数据结构呢？它为什么又能这么高效的查找呢？究竟使用了什么样的算法呢？
+
+>   2、如果是你你该如何利用我们已经学过的知识来设计上面这个sql的索引结构呢？
+
+MySql索引为什么不选用二叉搜索树：在某些极端的情况会退化成链表那样. 比如插入一串循环增大的数字. 1、2、3、.....1000+ 等. 为什么不选用红黑树：虽然红黑树解决了二叉搜索树极端情况下的退化、会做旋转平衡. 但是如果索引数据是 500万+ 的 数据做索引. 红黑树的高度可控吗？所以MySql最终选中了 B+ Tree
+
+>   3、MySql的阶数问题：
+
+MySql的默认一页的数据是16kg。建索引的时候会选一个字段. 如果是 bigint类型占8b空间. 那么阶数到底是多少呢? 如下16kb (页的大小) / ( 8b[bigint大小] + 8b [指针也是要占空间的.假如占8b] ) = 大约 1k 个点 (1024个点) 那么相当于1024 阶的 B+ Tree。那么3层可以存多少数据呢?那么就是 1024 * 1024 * 1024 个数据
 
 
 
+#### 2、B+ Tree
 
 
 
+##### 1、特性
 
 
 
+>   1、B+Tree的性质(M阶(阶数就是每个索引节点最大存储的数据个数)【M叉】的B+Tree)
+
+1.  每个节点最多有m个子结点
+2.  除了根节点外、每个节点至少有 m / 2 个子结点、注意如果结果除不尽、就向上取整、比如 5 / 2 = 3、3 / 2 = ceil (1. 5) = 2
+3.  根节点要么是空、要么是独根、否则至少有两个子结点
+4.  有k个子结点的节点必有k个关键码 (有m个数据就有m个边分叉)
+5.  叶节点的高度一致
 
 
 
+##### 2、B+Tree结构
+
+1.  非叶子节点不存储数据. 只存储索引、可以放更多的索引
+2.  叶子节点包含所有索引字段
+3.  叶子节点用指针连接、提高区间访问的性能
 
 
-## 4、常用数据结构的应用场景
+
+##### 3、B+ Tree的构建过程
+
+
+
+1、分裂 (插入新元素)：如下图所示.为一个简单的B+Tree结构
+
+![image-20210615100433582](Data Structure.assets/image-20210615100433582.png)
+
+如上图所示. 假如要插入15 因为B+Tree所有的数据都是存到叶子节点、所以插入的元素都是从叶子节点开始插入.查找还是走索引查询、15 要插入的位置为左叶子节点 10 20 中间. (此时因为B+Tree是3阶的.所以叶子节点也是存储3个数据.此时不会分裂) 如下图：
+
+![image-20210615100506618](Data Structure.assets/image-20210615100506618.png)
+
+
+
+上图所示已经插入了15.如果现在在插入一个17节点.插入后如下：
+
+
+
+![image-20210615100525489](Data Structure.assets/image-20210615100525489.png)
+
+
+
+上图插入17元素后左子树变成了四个节点.这是已经超过了3个节点(3阶).此时就要做分裂了根据B+Tree的性质2就要做分裂. 叶子节点 / 2
+
+![image-20210615100549520](Data Structure.assets/image-20210615100549520.png)
+
+
+
+上图为分裂后的情况. 以插入后节点超出空间的节点做 m / 2 => 4 / 2 = 2 . 这样就变成了上图所示. 当然. 父节点要做分裂后的调整. 比如将最左子树的最大元素15插入到父节点头部.如果父节点也超出了.那就在父节点上再做一次分裂. 当然删除的话就是合并
+
+到此、B+ Tree 的分裂结束
+
+
+
+##### 4、B+ Tree 的字符串索引怎么存？
+
+>   字符串都会转为字典序来存储、也就是ascii码.比如a：97、A：65、0：48等等
+
+
+
+B+Tree 的 父索引节点存储的是以当前父节点的所有孩子节点的最大或者最小的那个值组成的节点
+下图为 MySql 索引 B+ Tree 的数据结构
+
+![image-20210615100749472](Data Structure.assets/image-20210615100749472.png)
+
+
+
+### 15、赫夫曼树 (HuffmanTree)
+
+
+
+#### 1、小节前思考
+
+
+
+1.电报发送：二战的时候大家都知道那时候普遍会应用电报，如果让你来设计一个电报的发送编码你该如何设计呢？
+
+>   使用压缩算法：给你10000个字符（每个字符1btye，也就是8bit）的文件，你怎么存储可以尽可能的节省空间呢？
+>
+
+要开 10000个字符 * 8 个空间. 那么我们都可以想到一个思路就是用某个字符来代替（映射）、比如压缩算法里面我们可以用二进制来代替假如字符是 a b c d 4种、那我们假定 a=000 b=001 c=010 d=100,这样我们每个字符就变成了3bit的二进制，那么10000个字符就是30000bit，比起原来的80000bit是不是缩小了很多的存储空间？缩小了将近3倍
+
+但是这样做会有一个问题、有没有更优的解决方法呢？哈夫曼编码、也叫前缀编码
+
+
+
+#### 2、最优二叉树 (赫夫曼树)
+
+
+
+1、权重概念：赫夫曼树每个点都有一个权重.比如 a 的权重为 7、b 为 5、c 为 2、d 为 4、如下图所示
+
+![image-20210615101653384](Data Structure.assets/image-20210615101653384.png)
+
+以上的带权路径长度总和计算为如下方式
+
+```apl
+WPL(a):7*2+5*2+2*2+4*2=36()
+WPL(b):7*3+5*3+2*1+4*2=46()
+WPL(c):7*1+5*2+2*3+4*3=35()
+```
+
+得出：给定N个权值为N个叶子节点、构造一棵二叉树，若该树的带权路径长度达到最小、称这样的二叉树为最优二叉树、也成为哈夫曼树（HuffmanTree）哈夫曼树是带权路径长度最短的树、权值较大的节点离根较近
+
+
+
+#### 3、赫夫曼编码
+
+
+
+上面的最优二叉树中我们给每一条边加上一个权值，指向左子节点的边我们标记为0，指向右子节点的边标记为1、
+那么从根节点到叶子节点的路径就是我们说的哈夫曼编码
+
+![image-20210615101802690](Data Structure.assets/image-20210615101802690.png)
+
+```java
+A：0              //从根节点到A的路径就是0
+B：10             //从根节点到B的路径就是10
+C：110            //从根节点到C的路径就是110
+D：111            //从根节点到D的路径就是111
+```
+
+
+
+#### 4、赫夫曼树的构建思路
+
+
+
+贪心算法利用局部最优推出全局最优、把频率出现多的用短码表示，频率出现小的就用长一点的表示，而且任何一个字符的编码都不是另一个的前缀, 在解压缩的时候、我们每次会读取尽可能长的可解压的二进制串，所以解压缩的时候也不会产生歧义
+
+1.  每次取数据串中最小的两个节点、将之组成为一颗子树
+2.  从数据串中移除已使用的两个最小节点
+3.  然后将组成的子树的和放入原来的序列中
+4.  重复1 2 3 步骤直到剩最后一个数据
+
+>   例子：[ a：3，b：24，c：6，d：20，e：34，f：4，g：12 ] 根据此权重来实现哈夫曼树
+
+
+
+#### 5、哈夫曼编码的完整实现
+
+
+
+```java
+package lee.learning.video.datastructure.tree.huffman;
+
+
+import java.util.*;
+
+/**
+ * 哈夫曼树的实现.
+ * @param <T>
+ */
+public class HuffmanTree<T extends Comparable<? super T>> {
+
+    HuffmanNode root;
+    List<HuffmanNode> leafs; //叶子节点
+    Map<Character, Integer> weights; //叶子节点的权重
+
+    public HuffmanTree() {
+        this.leafs = new ArrayList<HuffmanNode>();
+    }
+
+    /**
+     * 初始化构建哈夫曼树
+     */
+    private void createTree() {
+
+        PriorityQueue<HuffmanNode> priorityQueue = new PriorityQueue();
+
+        for (Character key : weights.keySet()) {
+            HuffmanNode huffman = new HuffmanNode();
+            huffman.data = key.toString();
+            huffman.fre = weights.get(key);
+
+            priorityQueue.add(huffman);
+            leafs.add(huffman);
+        }
+
+        int length = priorityQueue.size();
+        for (int i = 1; i <= length - 1; i++) {
+            HuffmanNode n1 = priorityQueue.poll();
+            HuffmanNode n2 = priorityQueue.poll();
+
+            HuffmanNode newNode = new HuffmanNode();
+            n1.parent = newNode;
+            n2.parent = newNode;
+
+            newNode.left = n1;
+            newNode.right = n2;
+            newNode.fre = n1.fre + n2.fre;
+            newNode.data = n1.data + n2.data;
+
+            priorityQueue.add(newNode);
+        }
+
+        root = priorityQueue.poll();
+    }
+
+    public void initializeHuffmanTree() {
+        Random ran = new Random(1);
+
+        Map<Character, Integer> weights = new HashMap<Character, Integer>();
+        char[] letters = new char[]{
+                'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+                'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+                ' ', '.', '!', ',', '\'', '\\', '/', '(', ')', '-', '[', ']', '@', '#', '$', '^', '&', '*', '~', ';', ':', '<', '>', '{', '}', '+',
+                '\n', '\t'
+        };
+
+        for (int i = 0; i < letters.length; i++) {
+            weights.put(letters[i], ran.nextInt(150));
+        }
+
+        this.weights = weights;
+
+        createTree();
+    }
+
+    /**
+     * 对叶子节点进行编码并存入Map
+     */
+    public Map<Character, String> codeInMap() {
+
+        Map<Character, String> map = new HashMap<Character, String>();
+
+        for (HuffmanNode huffman : leafs) {
+            Character leafValue = huffman.data.charAt(0);
+            StringBuilder code = new StringBuilder();
+            HuffmanNode currentNode = huffman;
+
+            do {
+                if (currentNode.parent != null && currentNode.parent.left == currentNode) {
+                    code.insert(0, "0");
+                } else {
+                    code.insert(0, "1");
+                }
+                currentNode = currentNode.parent;
+            } while (currentNode.parent != null);
+
+            map.put(leafValue, code.toString());
+            System.out.println(leafValue + "：" + code.toString());
+        }
+
+        return map;
+    }
+
+    //编码
+    public String enCode(String enCode) {
+        char[] enChar = enCode.toCharArray();
+        StringBuilder resultCode = new StringBuilder();
+
+        for (int i = 0; i < enChar.length; i++) {
+            for (HuffmanNode node : leafs) {
+                if (enChar[i] == node.data.charAt(0)) {
+
+                    HuffmanNode currentNode = node;
+                    StringBuilder jointCode = new StringBuilder();
+                    do {
+                        if (currentNode.parent != null && currentNode == currentNode.parent.left) {
+                            jointCode.insert(0, "0");
+                        } else {
+                            jointCode.insert(0, "1");
+                        }
+                        currentNode = currentNode.parent;
+                    } while (currentNode.parent != null);
+
+                    resultCode.append(jointCode);
+                    break;
+                }
+            }
+        }
+
+        return resultCode.toString();
+    }
+
+    //解码
+    public String deCode(String deCode) {
+
+        HuffmanNode currentNode = root;
+        char[] chars = deCode.toCharArray();
+        StringBuilder resultCode = new StringBuilder();
+
+        for (int i = 0; i < chars.length; i++) {
+            if (chars[i] == '0') {
+                currentNode = currentNode.left;
+            } else {
+                currentNode = currentNode.right;
+            }
+
+            if (currentNode.left == null && currentNode.right == null) {
+                resultCode.append(currentNode.data);
+                currentNode = root;
+            }
+        }
+
+        return resultCode.toString();
+    }
+}
+
+/**
+ * 哈夫曼树的节点定义
+ */
+class HuffmanNode implements Comparable<HuffmanNode> {
+
+    String data;
+    int fre;  //频率
+    HuffmanNode left;
+    HuffmanNode right;
+    HuffmanNode parent;
+
+    public int compareTo(HuffmanNode o) {
+        return this.fre - o.fre;
+    }
+}
+```
+
+
+
+### 16、树形 (Tree) 结构总结：
+
+
+
+#### 1、不同树形结构的区别
+
+
+
+二叉查找树：二叉搜索树优点查找速度快、但是在某些极端情况下会退化成链表、它也是所有高效查找树的基础结构.
+红黑树：内存查找高效树、不适合大数据量 也不适合磁盘存储的、因为会造成IO过分读取造成资源浪费还有就是树的高度不可控、适合一些底层系统做内存运算.
+B-Tree： 可以认为是B+ Tree的过度版本、B-Tree 的每个节点都是存储数据的
+B+Tree：最适合大数据的磁盘索引、经典的 MySql 索引底层结构、所有的数据都存在叶子节点、其它的都是索引数据、增加了系统的稳定性以及遍历查找效率
+
+和 B-Tree的不同：关键字和Key值。数据存储的地方，双向链表。
+
+M阶：这个由磁盘的页面大小决定，磁盘快和页内存都是4KB。我们的节点数也就是我们的M值 应该要尽可能的跟他一样。1 0.75的原则HashMap
+
+这样的好处就是为了我们一次刚好能全部拿出一个节点里面存的所有的数据
+
+
+
+### 16、图论结构 (Graph)
+
+
+
+#### 1、什么是图？
+
+
+
+>   图 ( Graph ) 是一种非线性数据结构、可以说它是一种比较复杂的数据结构，它比树型结构还要复杂，因为图没有层次的概念，它们之间任意元素都能产生关联
+
+
+
+#### 2、图的基本概念
+
+
+
+1.  **顶点**：指的是图中的元素节点都可以成为顶点
+2.  **边**：就是该元素相关联的元素连接成的边.
+3.  **顶点的度**：一个顶点的度是指与该顶点相关联的边的条数，顶点v的度记作d(v)
+4.  **出度、入度**：箭头指向的称为出度、箭头出去的称为入度
+5.  **桥（Bridge）**：若去掉一条边，便会使得整个图不连通，该边称为桥
+6.  **自环（Loop）**：若一条边的两个顶点为同一顶点，则此边称作自环
+7.  **有向图**：有方向的图称为 有向图
+
+![image-20210615103550399](Data Structure.assets/image-20210615103550399.png)
+
+
+
+8、**无向图**：无方向的图
+
+![image-20210615103615796](Data Structure.assets/image-20210615103615796.png)
+
+#### 3、图的存储
+
+
+
+>   图性结构我们应该用什么办法来存储呢？
+
+
+
+##### 1、邻接矩阵
+
+
+
+图里有X个点 就开辟 X * X 空间大小的矩阵(因为X个点每个点最多可以根X个元素产生关系).然后巧妙的利用数组下标.有关联的边就置为1
+
+如下图所示：就开辟 7 * 7 个空间. A[0][0] 就表示从0 到 0 的情况. A[0][1]就表示从0到1的情况.有边的就为1. 如下 A[0][1]就为1. 其它的都为0
+
+![image-20210615103707344](Data Structure.assets/image-20210615103707344.png)
+
+##### 2、邻接表(优化方案)
+
+
+
+其实就是链表. 将A点所有有关系的点横向存到链式结构中.然后是B依次遍历加到尾部
+
+![image-20210615103753367](Data Structure.assets/image-20210615103753367.png)
+
+#### 4、图的遍历
+
+
+
+>   图的搜索算法：需要掌握最基础的两种方法
+
+
+
+##### 1、DFS 深度优先搜索
+
+
+
+>   关键点——递归、回溯
+>
+>   深度优先遍历的时间复杂度为O(n^2). 优化策略为 剪枝、和启发式搜索
+
+就像走迷宫一样,起初选定一个方向一直走到底、直到这个方向没有路可走了、在退回一步寻找其它方向.再按照其它方向一直走到底. 然后继续这个步骤.
+
+
+
+>   **Java 代码实现**
+
+```java
+package lee.learning.video.datastructure.graph;
+
+/**
+ * 图的深度优先搜索
+ *  应用: 从起始位置到目标位置是否能走通、并且最短的路径是多少？. 其中 1 表示障碍物、0表示可以走.如下矩阵
+ *  其中 a[0][0]就是你的起始位置.a[4][2]就是目标位置
+ *  [0-0 1 0]
+ *  [0 0 0 0]
+ *  [0 0 1 0]
+ *  [0 1 0-0]
+ *  [0 0 0 1]
+ */
+public class DFS {
+    int row;   //地图的行
+    int column;//地图的列
+    int _dx, _dy;//目标的X、Y坐标
+
+    int[][] map;//邻接矩阵
+    boolean[][] mark;//标记邻接矩阵中走过的元素
+    static int minStep = Integer.MAX_VALUE;
+
+    public DFS(int[][] map, int row, int column, int dx, int dy){
+        this._dy = dy;
+        this._dx = dx;
+        this.map = map;
+        this.row = row;
+        this.column = column;
+        mark = new boolean[row][column];
+    }
+
+    int[][] next = { {0 , 1}, {1 , 0}, {0 ,-1}, {-1, 0} };
+    /**
+     * 时间复杂度 O(n^2)
+     */
+    public void dfs(int x, int y, int step) {
+        if (x == _dx && y == _dy) {
+            if (minStep > step) minStep = step;
+        }
+
+        for (int i = 0; i < 4; i++) {
+            int nextX = x + next[i][0];
+            int nextY = y + next[i][1];
+
+            if (nextX < 0 || nextX >= row || nextY < 0 || nextY >= column) {
+                continue;
+            }
+
+            if (map[nextX][nextY] == 0 && !mark[nextX][nextY]) {
+                mark[nextX][nextY] = true;
+                dfs(nextX, nextY, step + 1);
+                mark[nextX][nextY] = false;
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        int[][] nums = new int[][]{
+                {0, 0, 1 ,0},
+                {0, 0, 0 ,0},
+                {0, 0, 1 ,0},
+                {0, 1, 0 ,0},
+                {0, 0, 0 ,1}
+        };
+
+        DFS dfs = new DFS(nums, 5, 4,3, 2);
+        dfs.dfs(0 , 0, 0);
+
+        System.out.println("最小步数 => " + minStep);
+    }
+}
+```
+
+
+
+##### 2、BFS 广度优先搜索
+
+
+
+>   关键点——队列、和标记数组、加过的元素不能在加
+
+类似于树型结构的层次遍历.先找到一个点，然后将该点有关系的顶点依次加入队列、重复的已加入的顶点不可在加(否则容易死循环). 然后从队列出列第二个元素. 把第二个元素所有相关的顶点继续加入队列.依次即可.
+
+如下问题：
+
+![image-20210615104109631](Data Structure.assets/image-20210615104109631.png)
+
+>   **Java 代码实现**
+
+```java
+package lee.learning.video.datastructure.graph;
+
+import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
+
+/**
+ * 图的广度优先搜索
+ *  应用: 从起始位置到目标位置是否能走通. 其中 1 表示障碍物、0表示可以走.如下矩阵
+ *  其中 a[0][0]就是你的起始位置.a[4][2]就是目标位置
+ *  [0-0 1 0]
+ *  [0 0 0 0]
+ *  [0 0 1 0]
+ *  [0 1 0-0]
+ *  [0 0 0 1]
+ */
+public class BFS {
+    int row;   //地图的行
+    int column;//地图的列
+    int _dx, _dy;//目标的X、Y坐标
+
+    int[][] map;//邻接矩阵
+    boolean[][] mark;//标记邻接矩阵中走过的元素
+
+    public BFS(int[][] map, int row, int column, int dx, int dy){
+        this._dy = dy;
+        this._dx = dx;
+        this.map = map;
+        this.row = row;
+        this.column = column;
+        mark = new boolean[row][column];
+    }
+    private class Point{
+        int x;
+        int y;
+        public Point(int x, int y){
+            this.x = x;
+            this.y = y;
+        }
+    }
+
+    /**
+     * 时间复杂度 O(n)
+     */
+    public void bfs(int x, int y) {
+        if (x < 0 || x > row - 1 || y < 0 || y > column - 1) {
+            return;
+        }
+        if (x == _dx && y == _dy) {
+            System.out.println("Found it");
+            return;
+        }
+
+        mark[x][y] = true;
+        Queue<Point> queue = new ArrayBlockingQueue<>(row * column);
+        queue.add(new Point(x, y));
+        int[][] next = {
+                {0, 1},
+                {1, 0},
+                {0, -1},
+                {-1, 0}
+        };
+
+        while (!queue.isEmpty()) {
+            Point point = queue.poll();
+            for (int i = 0; i < 4; i++) {
+                //下一个要走的x、y坐标
+                int nextX = point.x + next[i][0];
+                int nextY = point.y + next[i][1];
+                //越界条件判断
+                if (nextX < 0 || nextX >= row || nextY < 0 || nextY >= column) {
+                    continue;
+                }
+                //0表示可以走的路
+                if (map[nextX][nextY] == 0 && !mark[nextX][nextY]) {
+                    if (nextX == _dx && nextY == _dy) {
+                        System.out.println("Found it, x：" + nextX + " y：" + nextY);
+                        return;
+                    }
+
+                    mark[nextX][nextY] = true;
+                    queue.add(new Point(nextX, nextY));
+                }
+            }
+        }
+
+        System.out.println("not Found");
+    }
+
+    public static void main(String[] args) {
+        int[][] nums = new int[][]{
+                {0, 0, 1 ,0},
+                {0, 0, 0 ,0},
+                {0, 0, 1 ,0},
+                {0, 1, 0 ,0},
+                {0, 0, 0 ,1}
+        };
+
+        BFS bfs = new BFS(nums, 5, 4,3, 2);
+        bfs.bfs(0 , 0);
+    }
+}
+```
+
+
+
+#### 5、图的应用
+
+
+
+1.  
+    社交网络 : QQ推荐
+2.  知图谱 : 推荐算法，数据挖掘
+3.  图数据库:Neo4j
+4.  路径问题：（导航软件），迪杰斯特拉算法
+
+
+
+## 4、数据结构的应用场景
 
 
 
@@ -4188,6 +6822,175 @@ public class BracketMatching {
 还有一种就是有界队列 (数组实现的). 只处理我们开的空间大小. 多了的继续抛出去、注意数组队列的大小. 小了不够、大了浪费.
 
 2、丢弃：不处理了. 直接抛出去
+
+
+
+### 5、堆树 ( Heap Tree ) 的应用
+
+
+
+#### 1、可以实现优先队列
+
+
+
+大家还记得我们上节课讲的赫夫曼树，我使用了一个优先队列大大减轻了我们的开发任务，但是大家知道这个优先队列内部是如何实现的呢？
+
+思路：就是大顶堆的操作. 每次都删除（取）堆顶进行操作.
+
+
+
+#### 2、如何实现一个用户热门搜索排行榜功能（微博热搜）？
+
+
+
+给你一个包含1亿关键词的用户检索的日志，如何取出排行前10的关键词
+思路：
+放到硬盘。分治，分成很多份。1亿个我分成 10个文件。分布式，分库分表。我要知道我的数据在哪张表
+
+-   hash%分表数 
+-   Hash%10=当前这个词放在哪个文件
+-   分成了10个文件后：分别求top10，然后再把这个top10合起来。也就是有100个数，再求一次
+-   衍生出很多情况：求新闻点击率
+-   MapReduce思想，hadoop
+
+
+
+#### 3、TOP K 问题
+
+
+
+比如给你一串10完的数字，求前 k 大的数.分为静态的数据和动态的数据.
+
+思路：每次都维护一个堆排序. 然后取堆顶前 k 个元素即可
+
+
+
+#### 4、给你 1 亿个不重复的数字在文件中，求出 Top10
+
+
+
+>   给你1亿个不重复的数字在文件（整数，1~2^32-1），求出top10。前10大的数字，还可动态添加新数字，但总个数不会超过1亿
+
+思路：维护一个10空间大小的数组. 然后堆化成一个小顶堆、每次读文件一行和堆顶进行对比. 大的就在进行一次堆化
+
+
+
+Java 代码实现
+
+```java
+package lee.learning.video.datastructure.tree.practice;
+
+import java.io.*;
+import java.util.Arrays;
+import java.util.Random;
+
+/**
+ * 给你1亿个随机生成的数字（整数，1~2^32-1），求出top10。前10大的数字，还可动态添加新数字，但总个数不会超过1亿
+ * 思路：用小顶推做排序
+ */
+public class PracticeHeapSort {
+
+    private static int[] topNums = new int[10];
+    private static final String FilePath = "F:\\Java_BigAgeFile\\nums.txt";
+
+    //堆排序部分
+    private static void heapSort() {
+        int length = topNums.length;
+        for (int i = length / 2 - 1; i >= 0; i--) {
+            maxHeap(topNums, i, length);
+        }
+
+        for (int i = length - 1; i > 0; i--) {
+            int tail = topNums[0];
+            topNums[0] = topNums[i];
+            topNums[i] = tail;
+            maxHeap(topNums, 0, i);
+        }
+    }
+
+    private static void maxHeap(int[] nums, int start, int end) {
+
+        int parent = start;
+        int left = start * 2 + 1;
+
+        while (left < end) {
+            int maxIndex = left;
+            int right = left + 1;
+
+            if (right < end && nums[left] < nums[right]) {
+                maxIndex = right;
+            }
+
+            if (nums[parent] > nums[maxIndex]) return;
+            else {
+                int temp = nums[parent];
+                nums[parent] = nums[maxIndex];
+                nums[maxIndex] = temp;
+
+                parent = maxIndex;
+                left = parent * 2 + 1;
+            }
+        }
+    }
+
+    // 主测试方法
+    public static void main(String[] args) throws IOException {
+        /*createBigNumsFile();*/
+
+        try (InputStreamReader reader = new InputStreamReader(new FileInputStream(FilePath))) {
+            
+            try (BufferedReader bufferedReader = new BufferedReader(reader)) {
+                String line = null;
+                //先读取前十行数据存入数组.
+                for (int i = 0; i < topNums.length; i++) {
+                    if ((line = bufferedReader.readLine()) != null) {
+                        topNums[i] = Integer.parseInt(line);
+                    }
+                }
+
+                heapSort();//进行堆化
+                System.out.println("Init nums => " + Arrays.toString(topNums));
+
+                while ((line = bufferedReader.readLine()) != null) {
+                    int readValue = Integer.parseInt(line);
+                    if (readValue > topNums[0]) {
+                        topNums[0] = readValue;
+                        //从数组头做一次堆化
+                        heapSort();
+                    }
+                }
+
+                System.out.println("Max Top 10 Value => " + Arrays.toString(topNums));
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    //创建一个大文件
+    public static void createBigNumsFile() throws IOException {
+
+        final String fileName = FilePath;
+        final Random random = new Random();
+        BufferedWriter objWriter = null;
+        objWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileName)));
+        for (int i = 0; i < 100000000; i++) {
+            int age = random.nextInt(100000000);
+            objWriter.write(age + "\r\n");
+        }
+        objWriter.flush();
+        objWriter.close();
+
+        System.out.println("Create File Success");
+    }
+}
+```
+
+
+
+
 
 
 
@@ -4756,50 +7559,7 @@ public int[] quickSort(int[] nums, int start, int end){
 
 ##### 1、堆树的定义
 
--   堆树是一颗完全二叉树
--   其每一个节点的值都大于等于(大顶堆)或者小于等于(小顶堆)其左右子节点的值.如下
-
-
-
->   大顶堆：就是根节点是最大的值.
-
-![image-20210611231147142](Data Structure.assets/image-20210611231147142.png)
-
->   小顶堆：根节点是最小的值
-
-![image-20210611231241591](Data Structure.assets/image-20210611231241591.png)
-
->   堆的操作：
-
-1、堆的插入操作(两种实现方式)：
-
- **从下往上**：如果我们要在一个堆树插入9、如下图演示，插入9之后是不满足堆树的性质的.需要根父节点就行交换下.交换后如果父节点还大于祖父节点就继续交换
-
-![image-20210611231344793](Data Structure.assets/image-20210611231344793.png)
-
-
-
-**从上往下 和 1 相反**
-
-其实插入的过程叫做堆化. 以数组为实现方式下标从0开始的左右节点计算公式：
-
-```apl
-2 * i + 1            2 * i + 2
-```
-
-
-
-2、堆的删除
-
-逻辑删除：就是新增一个字段标识节点是否被删除、删除的时候就标志为删除状态.
-
--   缺点：在一些对内存和性能要求比较高的系统中不适用、因为大量的删除操作会浪费大量的存储空间
-
-交换节点删除：假如要删除10这个根节点、那么需要把10和3先做交换(这样可以保持完全二叉树的特性)、然后3变根节点，在对3从上往下做堆化. 再把10删除了就行了
-
-![image-20210611231612766](Data Structure.assets/image-20210611231612766.png)
-
-在对3进行堆化的时候、至于该和左右子节点哪个交换位置、完全取决于左右子节点哪个大.
+>   见常用数据结构部分
 
 
 
@@ -5963,7 +8723,6 @@ boolean isSorted(int[] arr) {
 国外有人对慢速排序动画写了一个段子：
 
 >   slow sort is just merge sort with the severe paranoia that the elements have moved themselves while it wasn't looking  //排序的元素趁大家不注意的时候偷偷的移动一下
->
 
 
 
@@ -6401,9 +9160,1106 @@ public static int tailFab(int pre, int res, int n){
 
 
 
+### 2、贪心算法
 
 
 
+#### 1、什么是贪心算法？
+
+
+
+概念：贪心算法又叫做贪婪算法、它在求某个问题时，总是做出眼前最大利益、也就是说只顾眼前不顾大局.所以它是局部最优解、核心点：通过局部最优推出全局最优、贪心算法不是对所有问题都能得到整体最优解，关键是贪心策略的选择
+
+>   假设一个问题比较复杂，暂时找不到全局最优解，那么我们可以考虑把原问题拆成几个小问题（分而治之思想），分别求每个小问题的最优解，再把这些“局部最优解”叠起来，就“当作”整个问题的最优解了
+
+
+
+#### 2、贪心算法思路
+
+
+
+贪心算法一般按如下步骤进行
+
+-   建立数学模型来描述问题
+-   把求解的问题分成若干个子问题
+-   对每个子问题求解，得到子问题的局部最优解
+-   把子问题的解局部最优解合成原来解问题的一个解
+
+
+
+#### 3、贪心算法适用条件
+
+
+
+利用贪心法求解的问题应具备如下2个特征
+
+##### 1、贪心选择性质
+
+
+
+一个问题的整体最优解可通过一系列局部的最优解的选择达到，并且每次的选择可以依赖以前作出的选择，但不依赖于后面要作出的选择。这就是贪心选择性质。对于一个具体问题，要确定它是否具有贪心选择性质，必须证明每一步所作的贪心选择最终导致问题的整体最优解
+
+
+
+##### 2、最优子结构性质
+
+
+
+当一个问题的最优解包含其子问题的最优解时，称此问题具有最优子结构性质。问题的最优子结构性质是该问题可用贪心法求解的关键所在。在实际应用中，至于什么问题具有什么样的贪心选择性质是不确定的，需要具体问题具体分析
+
+
+
+#### 5、贪心算法缺点
+
+
+
+贪心算法也存在如下问题
+
+-   不能保证解是最佳的。因为贪心算法总是从局部出发，并没从整体考虑 
+-   贪心算法一般用来解决求最大或最小解
+-   贪心算法只能确定某些问题的可行性范围
+
+
+
+#### 6、会议问题
+
+
+
+某天早上公司领导找你解决一个问题，明天公司有N个同等级的会议需要使用同一个会议室，现在给你这个N个会议的开始和结束时间，你怎么样安排才能使会议室最大利用？即安排最多场次的会议？
+
+>   使用贪心策略
+
+这里拿课前思考问题1来做解答：即安排最多场次的会议. **例如以下时间点：**
+
+1 ~ 3，
+2 ~ 4，
+3 ~ 5，
+4 ~ 6
+
+按照结束时间从小到大排序：首先把以第一个加入我们可以开会的列表, 之后只要开始时间大于上一次会议的结束时间就OK
+
+>   贪心算法套路：
+
+一定会有一个排序。例如哈夫曼编码就是用的贪心算法、压缩算法、最短路径等. 贪心算法不是对所有问题都能得到整体最优解、关键是贪心策略的选择(比如按照会议结束时间排序)、选择的贪心策略必须具备无后效性、即某个状态以前的过程不会影响以后的状态、只与当前状态有关
+
+
+
+>   贪心算法最重要的两个点是：
+
+-   贪心策略：排序
+-   通过局部最优解能够得到全局最优解的
+
+
+
+一般通过以下问题就可以通过贪心算法解决：
+
+1.  针对某个问题有限制值、以及有一个期望的最好结果、通常是从某些数据中选出其中一些达到最好的效果
+2.  一般会有一个排序、找出贡献最大的
+3.  举例看贪心算法是否可以解决
+4.  贪心算法一般用在任务调度、教师排课等系统.
+
+
+
+代码如下：
+
+-   Meeting 类
+
+```java
+/**
+ * 贪心算法. 会议室安排问题.
+ */
+class Meeting implements Comparable<Meeting> {
+
+    int meNum; //会议编号
+    int startTime; //开始时间
+    int endTime;   //结束时间
+
+    public Meeting(int meNum, int startTime, int endTime) {
+        super();
+        this.meNum = meNum;
+        this.startTime = startTime;
+        this.endTime = endTime;
+    }
+
+    /**
+     * 按照结束时间排序
+     */
+    public int compareTo(Meeting o) {
+        if(this.endTime > o.endTime)
+            return 1;
+        return -1;
+    }
+
+    @Override
+    public String toString() {
+        return "Metting{" + "meNum=" + meNum + ", startTime=" + startTime + ", endTime=" + endTime + '}';
+    }
+}
+```
+
+-   测试类
+
+```java
+class MeetingTest {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        List<Meeting> meetings = new ArrayList<Meeting>();
+
+        System.out.print("请输入会议的总场次：");
+        int n = scanner.nextInt();
+        for (int i = 0; i < n; i++) {
+
+            System.out.print("请输入第" + (i + 1) + "场次的开始时间：");
+            int start = scanner.nextInt();
+
+            System.out.print("请输入第" + (i + 1) + "场次的结束时间：");
+            int end = scanner.nextInt();
+
+            Meeting meeting = new Meeting(i + 1, start, end);
+            meetings.add(meeting);
+            System.out.println();
+        }
+
+        meetings.sort(null);
+        int curTime = 0; //当前的时间. 从一天的0点开始
+        System.out.println("可以开的会议如下：");
+        for (int i = 0; i < n; i++) {
+            Meeting meeting = meetings.get(i);
+            if(meeting.startTime >= curTime){
+                curTime = meeting.endTime;
+                System.out.println(meeting.toString());
+            }
+        }
+    }
+}
+```
+
+
+
+#### 7、支付问题
+
+
+
+分别有 1, 5, 10, 50, 100 元、不同面额分别有 5, 2, 2,  3,  5 张纸币。问若要支付 k 元，则需要多少张纸币？
+
+>   贪心策略：我们遵循优先使用面值大的金额.
+
+1.  优先使用最大的面额100
+2.  然后尽可能的使用第二大的面额50
+3.  然后依次使用面额次要大的金额.10 => 5 => 1
+4.  优先使用大面额支付后.余下的未支付金额.优先使用最匹配的面额
+
+>   Java 代码实现
+
+```java
+public int minMoney(int pay){
+    int num = 0;
+    int[] moneys = {1, 5, 10, 50, 100};
+    int[] amount = {5, 2, 02, 03, 005};
+
+    for (int i = moneys.length - 1; i >= 0 ; i--) {
+        int c = Math.min(pay / moneys[i], amount[i]);
+        pay = pay - moneys[i] * c;
+        num += c;
+    }
+
+    if(pay > 0) num = -1;
+    return num;
+}
+```
+
+
+
+#### 8、贪心算法的不足
+
+
+
+>   实际上，用贪心算法解决问题的思路，并不总能给出最优解，比如来看下一个问题
+
+拿课前思考问题2来分析、似乎可以用贪心算法来解决. 但是贪心算法两个要点：排序也就是从小到大排序、或者从大到小.假如购物车有以下金额的物品
+
+```apl
+物品1：1500
+物品2：2000
+物品3：4000
+```
+
+以上这种情况如果从大到小排序. 选 物品 3 和 2. 那么就超了 1000 块钱. 肯定是不行的、如果从小到大排序. 选了 物品 1 和 2. 那么选出来的组合价值才 3500 元. 虽然选的多. 但是物品3显然更值钱和最优.所以贪心算法是不行的
+
+**贪心算法在某些场景不适用、那该如何选择呢？别慌、我们继续往下看**
+
+
+
+### 3、动态规划 [难点]
+
+
+
+#### 1、什么是动态规划？
+
+
+
+##### 1、动态规划概念
+
+
+
+**动态规划**（Dynamic Programming，DP）是运筹学的一个分支，是求解[决策过程](https://baike.baidu.com/item/决策过程/6714639)最优化的过程。20世纪50年代初，[美国](https://baike.baidu.com/item/美国/125486)数学家[贝尔曼](https://baike.baidu.com/item/贝尔曼/9239579)（R.Bellman）等人在研究多阶段决策过程的优化问题时，提出了著名的最[优化原理](https://baike.baidu.com/item/优化原理/949739)，从而创立了动态规划。动态规划的应用极其广泛，包括[工程技术](https://baike.baidu.com/item/工程技术/6998399)、经济、工业生产、军事以及[自动化控制](https://baike.baidu.com/item/自动化控制/8483773)等领域，并在[背包问题](https://baike.baidu.com/item/背包问题/2416931)、生产经营问题、资金管理问题、[资源分配问题](https://baike.baidu.com/item/资源分配问题/19135166)、[最短路径问题](https://baike.baidu.com/item/最短路径问题/23162228)和复杂系统可靠性问题等中取得了显著的效果
+
+动态规划算法通常用于求解具有某种最优性质的问题。在这类问题中，可能会有许多可行解。每一个解都对应于一个值，我们希望找到具有[最优值](https://baike.baidu.com/item/最优值)的解。动态规划算法与[分治法](https://baike.baidu.com/item/分治法)类似，其基本思想也是将待求解问题分解成若干个子问题，先求解子问题，然后从[这些子](https://baike.baidu.com/item/这些子)问题的解得到原问题的解。与分治法不同的是，适合于用动态规划求解的问题，经分解得到子问题往往不是互相独立的。若用分治法来解这类问题，则分解得到的子问题数目太多，有些子问题被重复计算了很多次。如果我们能够保存已解决的子问题的答案，而在需要时再找出已求得的答案，这样就可以避免大量的重复计算，节省时间。我们可以用一个表来记录所有已解的子问题的答案。不管该子问题以后是否被用到，只要它被计算过，就将其结果填入表中。这就是动态规划法的基本思路。具体的动态规划算法多种多样，但它们具有相同的填表格式
+
+
+
+##### 2、quora 上有这样一个问题
+
+
+
+>   **how should explain dynamic programming to a 4-year-old？** 底下有个42K赞同的答案，是这样说的
+
+在一张纸上写下
+
+```apl
+1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 = ???
+```
+
+-   答案是什么？毫无疑问，经过简单计算、结果为 8
+-   那如果在表达式右边加上一个 " + 1 " 后结果是多少呢？
+-   这还用想吗？9 啊
+-   你怎么回答的这么快？你怎么知道是 9 的？
+-   肯定啊，原来的表达式结果为 8，你又加 1 ，8 + 1 就是 9 啊、很简单
+
+所以、因为你记得原来的表达式结果为 8。**动态规划有一种奇特的说法就是、记住一些东西可以节省以后的时间**
+
+
+
+##### 3、小结
+
+
+
+按照定义，动态规划是把一个大问题拆解成一堆小问题，这个本身没啥问题，但是我觉得的这个不是动态规划的核心思想，或者说，一个”大问题“之所以能用”动态规划“解决，并不是因为它能拆解成—堆小问题，事实上啥大问题都能拆解成小问题...
+
+**取决于该问题是否能用动态规划解决的是这些”小问题“会不会被被重复调用**
+
+
+
+#### 2、能用动态规划解决问题的特点
+
+
+
+能采用动态规划求解的问题的一般要具有3个性质：
+
+##### 1、最优化原理：
+
+如果问题的最优解所包含的子问题的解也是最优的，就称该问题具有最优子结构，即满足最优化原理
+
+
+
+##### 2、无后效性：
+
+即某阶段状态一旦确定，就不受这个状态以后决策的影响。也就是说，某状态以后的过程不会影响以前的状态，只与当前状态有关
+
+
+
+##### 3、有重叠子问题：
+
+即子问题之间是不独立的，一个子问题在下一阶段决策中可能被多次使用到（该性质并不是动态规划适用的必要条件，但是如果没有这条性质，动态规划算法同其他算法相比就不具备优势）
+
+
+
+##### 4、总结：
+
+```apl
+动态规划算法学习：
+ *   本质：递归
+ *   原问题(N) -> 子问题(N - 1) -> 原问题(N)
+ * 最优子结构
+ *   子问题最优决策可导出原问题最优决策
+ *   无后效性
+ * 重叠问题
+ *   去冗余
+ *   空间换时间(注意分析时空复杂度)
+```
+
+
+
+#### 3、动态规划解题思路
+
+
+
+动态规划所处理的问题是一个多阶段决策问题，一般由初始状态开始，通过对中间阶段决策的选择，达到结束状态。这些决策形成了一个决策序列，同时确定了完成整个过程的一条活动路线(通常是求最优的活动路线)。如图所示。动态规划的设计都有着一定的模式，一般要经历以下几个步骤
+
+
+
+>   初始状态→│决策１│→│决策２│→…→│决策ｎ│→结束状态
+>
+
+##### 1、划分阶段：
+
+按照问题的时间或空间特征，把问题分为若干个阶段。在划分阶段时，注意划分后的阶段一定要是有序的或者是可排序的，否则问题就无法求解
+
+
+
+##### 2、确定状态和状态变量：
+
+将问题发展到各个阶段时所处于的各种客观情况用不同的状态表示出来。当然，状态的选择要满足无后效性
+
+
+
+##### 3、确定决策并写出状态转移方程：
+
+因为决策和状态转移有着天然的联系，状态转移就是根据上一阶段的状态和决策来导出本阶段的状态。所以如果确定了决策，状态转移方程也就可写出。但事实上常常是反过来做，根据相邻两个阶段的状态之间的关系来确定决策方法和状态转移方程
+
+
+
+##### 4、寻找边界条件：
+
+给出的状态转移方程是一个递推式，需要一个递推的终止条件或边界条件。一般，只要解决问题的阶段、状态和状态转移决策确定了，就可以写出状态转移方程（包括边界条件）
+
+
+
+实际应用中可以按以下几个简化的步骤进行设计：
+
+-   分析最优解的性质，并刻画其结构特征。
+
+-   递归的定义最优解。
+
+-   以自底向上或自顶向下的记忆化方式（备忘录法）计算出最优值
+
+-   根据计算最优值时得到的信息，构造问题的最优解
+
+
+
+#### 4、动态规划算法实现说明
+
+
+
+动态规划的主要难点在于理论上的设计，也就是上面4个步骤的确定，一旦设计完成，实现部分就会非常简单。
+
+ 使用动态规划求解问题，最重要的就是确定动态规划三要素：
+
+1.  问题的阶段 
+2.  每个阶段的状态
+3.  从前一个阶段转化到后一个阶段之间的递推关系
+
+
+ 递推关系必须是从次小的问题开始到较大的问题之间的转化，从这个角度来说，动态规划往往可以用递归程序来实现，不过因为递推可以充分利用前面保存的子问题的解来减少重复计算，所以对于大规模问题来说，有递归不可比拟的优势，这也是动态规划算法的核心之处
+
+确定了动态规划的这三要素，整个求解过程就可以用一个最优决策表来描述，最优决策表是一个二维表，其中行表示决策的阶段，列表示问题状态，表格需要填写的数据一般对应此问题的在某个阶段某个状态下的最优值（如最短路径，最长公共子序列，最大价值等），填表的过程就是根据递推关系，从1行1列开始，以行或者列优先的顺序，依次填写表格，最后根据整个表格的数据通过简单的取舍或者运算求得问题的最优解
+
+```apl
+f(n, m) = max { f(n - 1, m), f(n - 1, m - w[n] ) + P(n, m) }
+```
+
+
+#### 5、背包问题 [ 经典 ]
+
+
+
+##### 1、分析阶段
+
+
+
+背包问题.小偷去商店盗窃、背有一个背包、容量是50kg、现有以下物品(物品不能切分)、请问小偷应该怎么拿才能得到最大的价值？
+
+```apl
+物品1：10kg 60 元    性价比 ==>  60 / 10 = 6
+物品2：20kg 100元   性价比 ==>  100 / 20 = 5
+物品3：30kg 120元   性价比 ==>  120 / 30 = 4
+```
+
+
+
+**按照贪心的策略**：性价比最高，按性价比排序的到最大的价值是 ￥60 + ￥100 = 160. 背包装了30kg的物品. 但是很显然. 30 + 20 (kg) = ￥120  + ￥100 = 220的价值最高.
+
+贪心就不适用了. 所以贪心算法具有局限性、要多举例测试、来证明贪心算法是否合适.
+
+**遍历**：每个物品都有两个选项. 拿与不拿. 我们就用枚举、举出所有的排列组合. 000 001 011 111 100 101 110 .... 然后算出价值最大的组合. 但是如果有 10 个物品呢. 
+
+有多少种排列组合. 10的阶乘!  10的阶乘可是很大的. 效率又是个问题. 如果20个物品30个物品的阶乘可是无尽大的. 这时候显然这种方案是不靠谱的.
+
+![image-20210614103130493](Data Structure.assets/image-20210614103130493.png)
+
+
+
+##### 2、使用动态规划解题
+
+
+
+**动态规划 [ 正解 ]**：根据以上的思想、动态规划做了一部分优化
+
+**优化思路**：将背包和物品数量价格缩小10倍.上面枚举法列举所有情况下的组合. 下面只考虑拿的情况下、缩小后如下
+
+```apl
+物品1：1kg   6元     
+物品2：2kg  10元   
+物品3：3kg  12元   
+```
+
+如下图：
+
+![image-20210614103221775](Data Structure.assets/image-20210614103221775.png)
+
+以上为先加入物品1下的各个重量背包的最大价值. 注意：每个物品只能放一个.
+
+![image-20210614103239907](Data Structure.assets/image-20210614103239907.png)
+
+以上为加入物品2后的各个重量下的背包的最大价值. 加入物品2后. 当背包为1kg的时候. 发现物品2的重量是2kg.装不下不管、还取上一次的￥6. 就是还是物品1. 
+
+当袋子为2kg的时候.之前物品1进来时最大值是6. 那么物品2进来就是￥10. 那就要抛弃物品1. 取得最大价值.
+
+![image-20210614103304582](Data Structure.assets/image-20210614103304582.png)
+
+以上为加入了最后一件物品. 各个背包下的最大重量. 当然我们取5kg下的最优排列.就是 ￥22
+
+状态转移方程：能放下物品的时候. 每次和上面的比较. 大我就装入背包、否则就不装. 
+
+```apl
+w : 总重量
+res : 结果
+money[i] : 价值
+Max( money[i] + res[ i - 1 ] [ w - weight[i] ] , res[i - 1][w] ).
+```
+
+
+
+##### 3、Java 代码背包问题：
+
+```java
+/**
+ * 动态规划：
+ *    背包问题.小偷去商店盗窃、背有一个背包、容量是50kg、现有以下物品(物品不能切分)、请问小偷应该怎么拿才能得到最大的价值？
+ */
+public class DynamicPlanning1 {
+
+    public static void main(String[] args) {
+        //商品对应的编号.￥
+        int[] value = {60, 100, 120};
+        //商品对应的重量.kg
+        int[] weight = {10, 20, 30};
+
+        int w = 50;   //背包重量
+        int n = 3;    //一共有几个商品可以偷窃
+
+        int[][] dp = new int[n + 1][w + 1];
+        //每次加的物品
+        for (int i = 1; i <= n; i++) {
+            //分割的背包. 这里分割成了50个单位
+            for (int cw = 1; cw <= w; cw++) {
+                // 表示这个物品可以装进去
+                if (weight[i - 1] <= cw)
+                {
+                    dp[i][cw] = Math.max(value[i - 1] + dp[i - 1][cw - weight[i - 1]], dp[i - 1][cw]);
+                } else {
+                    dp[i][cw] = dp[i - 1][cw]; //不能装下.还是取上一次价值
+                }
+            }
+        }
+        System.out.println("最大的价值：" + dp[n][w]);
+    }
+}
+```
+
+
+
+#### 6、盗窃商铺问题
+
+
+
+##### 1、问题说明
+
+
+
+盗窃商铺问题，如果一个小偷去盗窃一条街的商铺. 但是抢了第一家就不能抢相邻的第二家. 因为容易触发报警器.
+
+同理小偷抢了第二家就不能抢第三家.一共 N 家商铺. 以此类推. 那么小偷怎么抢才能获得最大的价值？
+
+初级. 递归解决 时间复杂度 O(2^n)
+
+
+
+##### 2、Java 代码实现
+
+```java
+/**
+ * 初级. 递归解决 时间复杂度 O(2^n)
+ */
+public int solve(int index, int[] nums){
+    if(index < 0) return 0;
+
+    return Math.max(
+            //如果抢了当前家就不能抢下一家.
+            nums[index] + solve(index - 2, nums),
+            //如果没抢当前家下一家就可以抢
+            solve(index - 1, nums)
+    );
+}
+```
+
+
+
+##### 3、改进和优化算法
+
+-   这次我们加入数据缓存、避免重复递归
+
+```java
+public static int[] result;
+/**
+ * 自顶向下
+ *   加入数组缓存 时间复杂度 O(n)
+ */
+public int solve1(int index, int[] nums){
+
+    if(index < 0) return 0;
+    //数组中存在即直接返回
+    if(result[index] != 0)
+        return result[index];
+
+    result[index] = Math.max(
+            nums[index] + solve1(index - 2, nums),
+            solve1(index - 1, nums)
+    );
+
+    return result[index];
+}
+```
+
+
+
+##### 4、改进成 For 循环模式
+
+```java
+/**
+ * 自底向上
+ *   改成For循环的方式
+ */
+public int solve2(int[] nums){
+    if(nums.length == 0 )
+        return 0;
+
+    result = new int[nums.length];
+    result[0] = nums[0];
+    result[1] = Math.max(nums[0], nums[1]);
+
+    for (int i = 2; i < nums.length; i++) {
+        result[i] = Math.max(
+                nums[i] + result[i - 2], result[i - 1]
+        );
+    }
+    return result[nums.length - 1];
+}
+```
+
+
+
+### 4、图论算法 & 最短路径
+
+
+
+#### 1、最短路径思考
+
+
+
+>   高德地图相信大家都知道，里面一个最基础的功能就是最优路线：比如路径最短，时间最短等，你有想过它是用了什么数据结构什么算法？如何来实现的呢？
+
+
+
+#### 2、最短路径分析
+
+
+
+我们可以把每个路口看成一个点，路口之间的路看作一条边。路的长度就是边的权重，即可得到以下这个图形这里我们就将地图转换成了我们熟悉的数据结构图，那么假设我要从1点作为起点，则就变成求1点到其他点的最短路径
+点少的情况下用邻接矩阵、点多的情况下用邻接表. 本次演示将使用邻接矩阵
+
+如下图：
+
+![image-20210615104527726](Data Structure.assets/image-20210615104527726.png)
+
+
+
+#### 3、迪杰斯特拉 ( Dijkstra ) 
+
+
+
+贪心算法、动态规划、**DFS(肯定可以解决但是性能问题不容小视)**.  这里选贪心的方案来解决
+
+算法选择：经典算法 **迪杰斯特拉 ( Dijkstra )** 算法. 即单源最短路径算法、它是所有最短路径算法的基础. 我们的地图 
+
+软件最终使用的算法也是以它为基础进行的优化.
+
+
+
+>   Java 代码实现
+
+```java
+package lee.learning.video.datastructure.graph;
+
+import java.util.Scanner;
+
+/**
+ * 数据结构-图
+ *  最短路径：迪杰斯特拉算法
+ */
+public class Dijkstra {
+    /**
+     * Init
+     */
+    public static void main(String[] args) {
+        //   点数        边数      起点
+        int dotCount, brimCount, start;
+
+        Scanner cin = new Scanner(System.in);
+        System.out.print("输入点数：");
+        dotCount = cin.nextInt();
+        System.out.print("输入边数：");
+        brimCount = cin.nextInt();
+        System.out.print("输入起点：");
+        start = cin.nextInt();
+
+        //表示点到点的邻接矩阵
+        int[][] value = new int[dotCount + 1][dotCount + 1];
+        //存最短路径的数组
+        int[] dis = new int[dotCount + 1];
+        for (int i = 1; i <= dotCount; i++) {
+            dis[i] = Integer.MAX_VALUE;
+            for (int j = 1; j <= dotCount; j++) {
+                //初始化邻接矩阵所有点表示不可以走
+                value[i][j] = -1;
+                if (i == j) {
+                    value[i][j] = 0;
+                }
+            }
+        }
+
+        //初始化要输入的边
+        for (int i = 0; i < brimCount; i++) {
+            /**
+             * xx表示到yy有一条路、长度是length
+             */
+            System.out.print("\n从：");
+            int xx = cin.nextInt();
+            System.out.print("到：");
+            int yy = cin.nextInt();
+            System.out.print("输入该路径的距离：");
+            int length = cin.nextInt();
+            value[xx][yy] = length;
+
+            //dis其实在第一个点的时候可以在这里计算
+            if (xx == start) {
+                dis[yy] = length;
+            }
+        }
+        System.out.println("\n init over! \n");
+        search(start, dis, value, dotCount);
+    }
+
+    public static void search(int start, int dis[], int[][] value, int dotCount) {
+        boolean[] mark = new boolean[dotCount + 1];
+        mark[start] = true;
+        dis[start] = 0;
+        int count = 1;
+        while (count <= dotCount) {
+            //表示新加的点
+            int location = 0;
+            int min = Integer.MAX_VALUE;
+            //求dis里面的最小值
+            for (int i = 1; i <= dotCount; i++) {
+                if (!mark[i] && dis[i] < min) {
+                    min = dis[i];
+                    location = i;
+                }
+            }
+
+            //表示没有可以加的点了
+            if (location == 0) break;
+
+            mark[location] = true;
+            for (int i = 1; i <= dotCount; i++) {
+                if (value[location][i] != -1 && (dis[location] + value[location][i] < dis[i])) {
+                    dis[i] = dis[location] + value[location][i];
+                }
+            }
+            count++;
+        }
+        for (int i = 1; i <= dotCount; i++) {
+            System.out.println(start + " 到 " + i + " 的最短路径为 " + dis[i]);
+        }
+    }
+}
+```
+
+
+
+### 5、Hash & BitMap(位图)
+
+
+
+#### 1、小节思考
+
+
+
+1、Hash扩容算法在多线程情况有什么问题？
+
+>   多线程 put 操作& get 操作死循环问题.
+
+JDK 1.7之前会出现多线程情况下的死循环问题、例如 A 线程在进行循环遍历操作、线程 B 进行 put  操作、正好 Hash表空间不够、在进行扩容并重新计算 Hash 值后. 进行链式操作、线程A遍历的 1 -> 2 -> 3 -> null 操作时. 扩容后碰巧把链式结构的尾部指针指到了头部例如 3 -> null 变成了 3 -> 1. 这样就头尾相互引用变成了循环链表、
+
+而JDK 1.7的遍历操作是 while(p.next != null) p = p.next. 这样死循环就悄然来袭.
+
+>   多线成put可能会导致 get取值错误
+
+线程B扩容后会进行重新的Hash运算、运算后值相对位置发生变化、线程A get遍历就会发生错误
+
+
+
+#### 2、判断3亿个整数一个数是否存在？
+
+
+
+>   如何在3亿个整数 ( 0 ~ 2亿 ) 中判断某一个数是否存在？单机环境、内存限制500M
+
+思路：分治?、 布隆过滤器(神器)、Redis? 、Hash 开 3 亿个空间、数组开 3 亿个空间? NoNoNo、分配不了这么多内存的.
+采用方案：**BitMap. 位图. 最小字节 bit. 1 Byte = 4 bit.**
+
+
+
+#### 3、BitMap 介绍
+
+
+
+##### 1、回顾 Java 变量占用字节
+
+
+
+>   Java类型回顾.计算机中最小的内存的单位是 bit(位)、只可以用来表示 非 0 即 1 
+
+Java 中变量占用空间
+
+```apl
+int =   4 byte = 32 bit
+float = 4 byte = 32 bit
+long =  8 byte = 64 bit
+char =  2 byte = 16 bit
+1 byte =  8 bit
+```
+
+int a = 1 这个在计算机中是怎么存储的？
+
+```java
+int a = 1;
+
+//如下分析. int 类型会在内存开辟 4 字节 32 个 bit 位.
+0000 0000 0000 0000 0000 0000 0000 0001
+```
+
+
+
+##### 2、回顾位移的操作
+
+
+
+位运算的操作：
+
+-   2 左移 1 位 是怎么运算的？ 2 << 1 = 2 * 2
+-   2 左移 2 位 是怎么运算的？ 2 << 2 = 2 * 4
+
+实例、左移运算 << ：比如 8 << 2 = 8 * 4 = 32 如下步骤：
+
+```java
+8 //左移两位后 
+   0000 0000 0000 0000 0000 0000 0000 1000 << 2
+   0000 0000 0000 0000 0000 0000 0010 0000 
+/* 约等于 */  => 2 ^ 5 = 2 * 2 * 2 * 2 * 2 = 32
+```
+
+实例、右移运算 >>：比如 8 >> 2 = 8 / 4 = 2
+
+```java
+8 // 右移两位后  >> 2 
+0000 0000 0000 0000 0000 0000 0000 1000
+0000 0000 0000 0000 0000 0000 0000 0010
+```
+
+>   其它的位移运算符参考章节 位运算符(番外篇)
+
+
+
+##### 3、引入 BitMap
+
+
+
+通过以上知识我们可以知道 一个 int 占 32个 bit 位. 假如我们用这个 32 个 bit 位的每一位的值来表示一个数的话是不是就可以表示 32 个数字, 也就是说 32 个数字只需要一个 int 所占的空间大小就可以了, 瞬间就可以缩小空间 32 倍. 比如假设我们有N {2，3，64} 个数中最大的是 MAX，那么我们只需要开 int [ MAX /32+1 ] 个 int 数组就可以
+
+存储完这些数据，具体可以看以下结构：
+
+```java
+int a : 0000 0000 0000 0000 0000 0000 0000 0000 
+```
+
+这里是32个位置，我们可以利用每个位置的 0 或者 1 来表示该位置的数是否存在,这样我们就可以得到以下存储结构：具体我们可以画个图来展示
+
+```java
+Data[0]: 0~31 32位
+Data[1]: 32~63 32位
+Data[2]: 64~95 32位
+Data[MAX /32+1]
+```
+
+![image-20210615110156595](Data Structure.assets/image-20210615110156595.png)
+
+
+
+假设我们要判断100是否在列表中，那么我们就可以这样来计算：
+
+>   65/32=2 => 定位到 data[2], 65 % 32 = 1 定位到 data[2] 的第 2 位(注意这里从右边开始数)。我们再来看 data[2] 的第二位是否是 1，如果是 1 则列表中存在 65，否则不存在、这就是 bitMap 算法的核心思想
+
+
+
+##### 4、BitMap 的代码实现
+
+
+
+-   以下没有给出 BitMap 的 remove 的实现、可以作为练习自己实现下
+
+```java
+package lee.learning.video.datastructure.bit;
+
+public class BitMap {
+
+    byte[] bits;//byte 8 位
+    int max;
+
+    public BitMap(int max){
+        this.max = max;
+        //max / 8 + 1
+        bits = new byte[(max >> 3) + 1];
+    }
+
+    public void add(int n){
+        //除以8得知在哪个下标的数组
+        int bitsIndex = n >> 3;
+        //对n取余得知在哪个位. 这里也可以用 & 运算
+        int location = n % 8;
+        //将指定下标的byte里的第location的bit位 置为1
+        bits[bitsIndex] |= 1 << location;
+    }
+
+    public boolean find(int n){
+        int bitsIndex = n >> 3;
+        int location = n % 8;
+
+        int flag = bits[bitsIndex] & (1 << location);
+        return ! (flag == 0);
+    }
+
+    public static void main(String[] args) {
+        BitMap bitMap = new BitMap(100);
+        bitMap.add(1);
+        bitMap.add(3);
+        bitMap.add(4);
+        bitMap.add(80);
+        bitMap.add(77);
+        System.out.println(bitMap.find(4));
+        System.out.println(bitMap.find(99));
+    }
+}
+```
+
+
+
+##### 5、BitMap 的作用和缺点
+
+
+
+>   作用
+
+1.  数据判重
+2.  对没有重复的数据排序，既然处理不了重复的数据 那么也处理不了Hash冲突，假如我们只有10个数（0~10亿）如果用 bitmap 你还是要开10亿/32个空间我们直接用 hashMap 或者一个 10 个空间的数组是不是就更好了。下周二我们解决这个重复问题；邮件过滤，爬虫判重等。hbase
+3.  根据 1 和 2 可以扩展出很多其他的应用，比如找不重复的数，统计数据等
+
+>   缺点
+
+1.  数据不能重复：数据只有0和1 也就是有或者没有 不知道有多个
+2.  数据量少时相对于普通的 hash 没有优势
+3.  无法处理字符串：hash 冲突
+
+
+
+### 6、BloomFilter 布隆过滤器
+
+
+
+#### 1、小节思考问题
+
+
+
+>   假设给你一个10亿的黑名单email，如何来进行黑名单过滤？垃圾邮件：
+
+BloomFilter
+
+>   缓存相信大家都知道，但是缓存并不是百分百命中的，通常我们会根据一个id（字符串uuid）判断缓存里面有没有数据，如果没有再去数据库查询，那你有没有想过突然来了一个超级并发去查询一个缓存不存在的id怎么办？
+
+思路：分布式锁解决、bitMap 解决 ( id 前提是整数)、如果 id 是字符串比如 uuid 的话怎么解决？
+
+
+
+#### 1、BloomFilter 介绍
+
+
+
+布隆过滤器是一种非常巧妙的数据结构、在很多高并发大数据项目中都有应用，它的特点就是高效的查找和插入，他的核心就一句话 如果不存在的数据肯定不存在、但是存在的数据还是有可能不存在的（存在一定范围误判）
+
+原理：其实跟 bitMap 存在一定相似性、Bloom Filter 解决 Hash 冲突(只能说降低了 Hash 冲突)：存入得值做两次 Hash 运算, 第一次得出 Hash 值后将标志位置为1、第二次再做一次 Hash 运算、再将第二次得标志位置为 1，查询得时候也要做两次 Hash 运算、并且两个标志位都为 1 才表示存在.
+
+![image-20210615111231030](Data Structure.assets/image-20210615111231030.png)
+
+如上图所示、baidu 和 google 对应的标志位分别为 1 、6 和 6、7. 如果在来一个xiaomi第一次 hash 值为1、第二次为6得话. 其实 xiaomi 字段并未存在布隆过滤器中、但是标志位1、6已经被置为1了、所以出现了一定可能误判、如上图其实特不是 Hash 次数越多越好、比如上图11个标志位、如果做对每个值做 11 次 Hash 运算、那么第一次所有的标志位都已经置为1了、以后查什么数据都是1就有问题了
+
+
+
+#### 2、BloomFilter 的操作
+
+
+
+>   插入：将一个插入得元素使用K个Hash函数进行K次计算、将得到的Hash值所对应得bit数组下标置为1
+
+>   查找：跟插入一样的道理、将查找的元素使用 k 个函数进行k次计算，将得到的值找出对应得 bit 数组下标、判断所有标志位是否为1.
+
+>   删除：Bloom Filter 不支持删除操作. 因为强制删除会导致一些列数据都失效问题、比如 google 删除了、因为与百度得标志位重叠一部分
+
+如果将 6、7 标志位置为 1、那么 baidu 做 Hash 运算得不到 6 得值而判定 baidu 不存在、真的要删除可以在过滤器外部加个白名单拦截就行了.
+
+
+
+#### 3、BloomFilter 的代码实现
+
+```java
+package lee.learning.video.datastructure.bit;
+
+import java.util.BitSet;
+
+/**
+ * 代码实现布隆过滤器
+ */
+public class BloomFilter {
+
+    int size;
+    BitSet bitSet;
+
+    public BloomFilter(int size){
+        this.size = size;
+        bitSet = new BitSet(size);
+    }
+
+    public void add(String key){
+        bitSet.set(hash_1(key), true);
+        bitSet.set(hash_2(key), true);
+        bitSet.set(hash_3(key), true);
+    }
+
+    public boolean find(String key){
+        if(!bitSet.get(hash_1(key))){
+            return false;
+        }
+        if(!bitSet.get(hash_2(key))){
+            return false;
+        }
+        if(!bitSet.get(hash_3(key))){
+            return false;
+        }
+        return true;
+    }
+
+    public int hash_1(String key){
+        int hash = 0;
+        int i;
+        for (i = 0; i < key.length(); ++i) {
+            hash = 33 * hash + key.charAt(i);
+        }
+
+        return Math.abs(hash) % size;
+    }
+
+    public int hash_2(String key){
+        final int p = 16777619;
+        int hash = (int) 2166136261L;
+        for (int i = 0; i < key.length(); i++) {
+            hash = (hash ^ key.charAt(i)) * p;
+        }
+
+        hash += hash << 13;
+        hash ^= hash >> 7;
+        hash += hash << 3;
+        hash ^= hash >> 17;
+        hash += hash << 5;
+        return Math.abs(hash) % size;
+    }
+
+    public int hash_3(String key) {
+        int hash, i;
+        for (hash = 0, i = 0; i < key.length(); ++i) {
+            hash += key.charAt(i);
+            hash += (hash << 10);
+            hash ^= (hash >> 6);
+        }
+        hash += (hash << 3);
+        hash ^= (hash >> 11);
+        hash += (hash << 15);
+        return Math.abs(hash) % size;
+    }
+
+    public static void main(String[] args) {
+        BloomFilter bloomFilter = new BloomFilter(Integer.MAX_VALUE);
+        bloomFilter.add("google");
+        bloomFilter.add("baidu");
+        bloomFilter.add("huawei");
+        bloomFilter.add("xiaomi");
+
+        System.out.println(bloomFilter.find("google"));
+        System.out.println(bloomFilter.find("googl1"));
+    }
+}
+```
+
+
+
+#### 4、BloomFilter 的优化
+
+
+
+通过以上原理我们知道、布隆过滤器最重要得其实是误判率、那么怎么才能降低这个误判率呢？其实这个是有公式推导得：如果我们以问题1来做例子、要求误判率不得高于 0.1%
+
+分析问题：
+
+-   假设布隆过滤器开的长度为 m
+-   元素个数为 N
+-   哈希函数个数为 K
+-   误判率为 p
+
+如何来确定bit数组的大小和哈希函数K的值：
+
+>   概率论+高数推导出来的，p是误差率：开的空间
+
+![image-20210615111526022](Data Structure.assets/image-20210615111526022.png)
+
+>   哈希函数的个数：
+
+![image-20210615111551002](Data Structure.assets/image-20210615111551002.png)
+
+>   真实误差率：
+
+![image-20210615111609667](Data Structure.assets/image-20210615111609667.png)
+
+
+
+#### 5、BloomFilter的使用场景
+
+
+
+>   有哪些使用场景:前提你得接受一定的误判率 大约0.1%
+
+-   爬虫过滤
+-   缓存击穿：小数据量的直接用 hash 或者确定 id 的可以用 bitmap
+-   垃圾邮件过滤
+-   秒杀系统：重复买
+-   Hbase get操作
 
 
 
