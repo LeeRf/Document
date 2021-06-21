@@ -2475,7 +2475,7 @@ class Node<T> {
 
 ![image-20210611150744537](Data Structure.assets/image-20210611150744537.png)
 
-**设计模式：生产者消费者模式. put生产数据. take消费数据**
+**设计模式：生产者消费者模式. put 生产数据. take 消费数据**
 
 
 
@@ -6295,7 +6295,6 @@ B+Tree 的 父索引节点存储的是以当前父节点的所有孩子节点的
 1.电报发送：二战的时候大家都知道那时候普遍会应用电报，如果让你来设计一个电报的发送编码你该如何设计呢？
 
 >   使用压缩算法：给你10000个字符（每个字符1btye，也就是8bit）的文件，你怎么存储可以尽可能的节省空间呢？
->
 
 要开 10000个字符 * 8 个空间. 那么我们都可以想到一个思路就是用某个字符来代替（映射）、比如压缩算法里面我们可以用二进制来代替假如字符是 a b c d 4种、那我们假定 a=000 b=001 c=010 d=100,这样我们每个字符就变成了3bit的二进制，那么10000个字符就是30000bit，比起原来的80000bit是不是缩小了很多的存储空间？缩小了将近3倍
 
@@ -8590,7 +8589,7 @@ int main() {
 
 
 
->   **梳排序（Comb sort）**是一种由[Wlodzimierz Dobosiewicz](https://zh.wikipedia.org/w/index.php?title=Wlodzimierz_Dobosiewicz&action=edit&redlink=1)于1980年所发明的不稳定[排序算法](https://zh.wikipedia.org/wiki/排序算法)，并由[Stephen Lacey](https://zh.wikipedia.org/w/index.php?title=Stephen_Lacey&action=edit&redlink=1)和[Richard Box](https://zh.wikipedia.org/w/index.php?title=Richard_Box&action=edit&redlink=1)于1991年四月号的[Byte杂志](https://zh.wikipedia.org/w/index.php?title=Byte雜誌&action=edit&redlink=1)中推广
+>   **梳排序（Comb sort）**是一种由[Wlodzimierz Dobosiewicz](https://zh.wikipedia.org/w/index.php?title=Wlodzimierz_Dobosiewicz&action=edit&redlink=1)于1980年所发明的不稳定 [排序算法](https://zh.wikipedia.org/wiki/排序算法)，并由 [Stephen Lacey](https://zh.wikipedia.org/w/index.php?title=Stephen_Lacey&action=edit&redlink=1) 和 [Richard Box](https://zh.wikipedia.org/w/index.php?title=Richard_Box&action=edit&redlink=1) 于1991年四月号的 [Byte杂志 ](https://zh.wikipedia.org/w/index.php?title=Byte雜誌&action=edit&redlink=1)中推广
 
 梳排序是冒泡排序的一种优化方案，主要是为了解决冒泡排序中的尾部小数值问题。它主要的思想是通过比较元素和固定步长位置上的数据，先进行部分优化，然后逐步减少步长，以此来对数据进行预处理。
 
@@ -8766,6 +8765,8 @@ static int[] pigeonholeSort(int[] unsorted){
 
 
 ##### 1、耐心排序介绍：
+
+
 
 >   **耐心排序**（Patience Sort）是将数组的元素分类成很多堆再串接回数组的一种[排序算法](https://zh.wikipedia.org/wiki/排序算法)
 
@@ -9767,7 +9768,6 @@ public int minMoney(int pay){
 
 
 >   初始状态→│决策１│→│决策２│→…→│决策ｎ│→结束状态
->
 
 ##### 1、划分阶段：
 
