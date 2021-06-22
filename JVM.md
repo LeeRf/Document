@@ -919,7 +919,33 @@ java ‐Xms2048M ‐Xmx2048M ‐Xmn1024M ‐Xss512K ‐XX:MetaspaceSize=256M ‐
 
 
 
-### 1、JVM 参数详解
+### 1、JVM 参数汇总
+
+
+
+Spring Boot 程序的 JVM 参数设置格式 (Tomcat 启动直接加在 bin 目录下 catalina.sh 文件里)：
+
+```java
+java -Xms2048M -Xmx2048M -Xmn1024M -Xss512K -XX:MetaspaceSize=256M -XX:MaxMetaspaceSize=256M -jar microservice-eureka-server.jar
+```
+
+-   -Xss：每个线程的栈大小
+-   -Xms：初始堆大小，默认物理内存的 1/64
+-   -Xmx：最大堆大小，默认物理内存的 1/4
+-   -Xmn：新生代大小
+-   -XX:NewSize：设置新生代初始大小
+-   -XX:NewRatio：默认 2 表示新生代占年老代的 1/2，占整个堆内存的 1/3
+-   -XX:SurvivorRatio：默认 8 表示一个 survivor 区占用 1/8 的 Eden 内存，即 1/10 的新生代内存
+
+>   关于元空间的 JVM 参数有两个：-XX:MetaspaceSize=N 和 -XX:MaxMetaspaceSize=N
+
+**-XX：MaxMetaspaceSize**： 设置元空间最大值， 默认是-1， 即不限制， 或者说只受限于本地内存大小。
+
+**-XX：MetaspaceSize**： 指定元空间触发Fullgc的初始阈值(元空间无固定初始大小)， 以字节为单位，默认是21M左右，达到该值就会触发full gc进行类型卸载， 同时收集器会对该值进行调整： 如果释放了大量的空间， 就适当降低该值； 如果释放了很少的空间， 那么在不超过-XX：MaxMetaspaceSize（如果设置了的话） 的情况下， 适当提高该值。这个跟早期jdk版本的**-XX:PermSize**参数意思不一样，-**XX:PermSize**代表永久代的初始容量。
+
+
+
+### 2、JVM 参数详解
 
 
 
@@ -939,7 +965,8 @@ public void stackOverFlow(){
 
 分析：看以上代码、如果运行以上代码、最终都会触发 StackOverflowError 异常、因为每次调用都要对 stackOverFlow 方法在线程栈上分配一块空间、这属于死循环嵌套调用、发生异常的时间取决于 -Xss 线程栈设置的大小
 
-结论：-Xss 设置越小 count 值越小，说明一个线程栈里能分配的栈帧就越少，但是对 JVM 整体来说能开启的线程数会更多
+>   结论：-Xss 设置越小 count 值越小，说明一个线程栈里能分配的栈帧就越少，但是对 JVM 整体来说能开启的线程数会更多
+>
 
 
 
@@ -2481,8 +2508,6 @@ ZGC目前有4中机制触发GC：
 
 
 
-
-
 ### 5、其他垃圾收集器介绍
 
 
@@ -2490,6 +2515,14 @@ ZGC目前有4中机制触发GC：
 #### 1、Epsilon 垃圾收集器
 
 
+
+>   在 G1、Shenandoah 或者 ZGC 这些越来越复杂，越来越先进的垃圾收集器相继出现的同时，也有一个 “反其道而行之” 的垃圾收集器出现在 JDK 11 的清单中  --->  Epsilon、这是一款以不能够进行垃圾收集为 “卖点” 的收集器，听起来就感觉十分违背逻辑
+
+
+
+Epsilon 被形容成一个无操作的垃圾收集器、事实上只要 Java 虚拟机能够工作，垃圾收集器便不可能是真正 “无操作” 的，原因是 垃圾收集器 这个名字不能形容 Epsilon 的全部职责，而是 “自动内存管理子系统”，一个垃圾收集器除了本职工作外，他还要负责堆的管理与布局，对象的分配、与解释器协作、与编译器协作、与监控子系统协作等。
+
+在实际生产环境中，不能进行垃圾收集器的 Epsilon 也仍有用武之地，近些年来大型系统从传统单体应用向微服务化、无服务化方向发展的趋势已经越发明显，Java 在这方面有所不足，传统 Java 内存占用大、在容器中启动时间长，即时编译需要缓慢优化等特点，对小规模服务形式有诸多不适，所以 Epsilon 正式为此而生，如果应用只需要运行数分钟甚至数秒、只要 Java 虚拟机能够正确分配内存、在堆耗尽之前就会退出、那显然运行负载极小、没有任何收集行为的 Epsilon 便是恰当选择
 
 
 
@@ -2632,4 +2665,1918 @@ ZGC目前有4中机制触发GC：
 下图有连线的可以搭配使用
 
 ![image-20210621230807185](JVM.assets/image-20210621230807185.png)
+
+
+
+## 6、Class 常量池&运行时常量池
+
+
+
+### 1、Class 常量池大致详解
+
+
+
+#### 1、Class 常量池介绍
+
+
+
+Class 常量池可以理解为是 Class 文件中的资源仓库。 Class 文件中除了包含类的版本、字段、方法、接口等描述信息外，还有一项信息就是**常量池(constant pool table)**，用于存放编译期生成的各种 **字面量(Literal) 和符号引用(Symbolic References)**
+
+>   一个 class 文件的 16 进制大体结构如下图
+
+![image-20210622153436780](JVM.assets/image-20210622153436780.png)
+
+
+
+我们拿第一行为例 (其它依次类推)：对应的含义如下，细节可以查下 Oracle 官方文档
+
+```java
+cafe babe   0000  0034                 0042         0a00    0ceo   2c0a
+//魔数     次版本  主版本(十进制52)   常量池计数器    常量池   数据区  代码区
+```
+
+
+
+#### 2、javap -v 生成可读的字节码
+
+
+
+当然我们一般不会去人工解析这种 16 进制的字节码文件，我们一般可以通过 javap 命令生成更可读的 JVM 字节码指令文件：
+
+```c#
+javap -v BitMap.class
+```
+
+```c++
+Classfile /D:/Java/LeeLearning1/target/classes/lee/learning/video/datastructure/bit/BitMap.class
+  Last modified 2021-6-16; size 1203 bytes
+  MD5 checksum bb8d85a8db62e7e7845d74281fb6b71b
+  Compiled from "BitMap.java"
+public class lee.learning.video.datastructure.bit.BitMap
+  minor version: 0
+  major version: 52
+  flags: ACC_PUBLIC, ACC_SUPER
+Constant pool:
+   #1 = Methodref          #10.#38        // java/lang/Object."<init>":()V
+   #2 = Fieldref           #4.#39         // lee/learning/video/datastructure/bit/BitMap.max:I
+   #3 = Fieldref           #4.#40         // lee/learning/video/datastructure/bit/BitMap.bits:[B
+   #4 = Class              #41            // lee/learning/video/datastructure/bit/BitMap
+   #5 = Methodref          #4.#42         // lee/learning/video/datastructure/bit/BitMap."<init>":(I)V
+   #6 = Methodref          #4.#43         // lee/learning/video/datastructure/bit/BitMap.add:(I)V
+   #7 = Fieldref           #44.#45        // java/lang/System.out:Ljava/io/PrintStream;
+   #8 = Methodref          #4.#46         // lee/learning/video/datastructure/bit/BitMap.find:(I)Z
+   #9 = Methodref          #47.#48        // java/io/PrintStream.println:(Z)V
+  #10 = Class              #49            // java/lang/Object
+  #11 = Utf8               bits
+  #12 = Utf8               [B
+  #13 = Utf8               max
+  #14 = Utf8               I
+  #15 = Utf8               <init>
+  #16 = Utf8               (I)V
+  #17 = Utf8               Code
+  #18 = Utf8               LineNumberTable
+  #19 = Utf8               LocalVariableTable
+  #20 = Utf8               this
+  #21 = Utf8               Llee/learning/video/datastructure/bit/BitMap;
+  #22 = Utf8               MethodParameters
+  #23 = Utf8               add
+  #24 = Utf8               n
+  #25 = Utf8               bitsIndex
+  #26 = Utf8               location
+  #27 = Utf8               find
+  #28 = Utf8               (I)Z
+  #29 = Utf8               flag
+  #30 = Utf8               StackMapTable
+  #31 = Utf8               main
+  #32 = Utf8               ([Ljava/lang/String;)V
+  #33 = Utf8               args
+  #34 = Utf8               [Ljava/lang/String;
+```
+
+
+
+>   其中 Constant pool 就是 Class 常量池信息，常量池中主要存放两大类常量：**字面量和符号引用**
+
+
+
+#### 3、字面量
+
+
+
+**字面量就是指由字母、数字等构成的字符串或者数值常量**
+
+字面量只可以右值出现，所谓右值是指等号右边的值，如：int a=1 这里的 a 为左值，1 为右值。在这个例子中 1 就是字面量
+
+```java
+int a = 1;
+int b = 2;
+int c = "abcdefg";
+int d = "abcdefg";
+```
+
+
+
+#### 4、符号引用
+
+
+
+符号引用是编译原理中的概念，是相对于直接引用来说的、主要包括了以下三类常量：
+
+-   类和接口的全限定名 
+-   字段的名称和描述符 
+-   方法的名称和描述符
+
+>   上面的 a，b 就是字段名称，就是一种符号引用，还有 Math 类常量池里的 Lcom/tuling/jvm/Math 是类的全限定名，main 和 compute 是方法名称，() 是一种 UTF8 格式的描述符，这些都是符号引用
+
+这些常量池现在是静态信息，只有到运行时被加载到内存后，这些符号才有对应的内存地址信息，这些常量池一旦被装入内存就变成**运行时常量池**，对应的符号引用在程序加载或运行时会被转变为被加载到内存区域的代码的直接引用，也就是我们说的**动态链接了。例如，compute() 这个符号引用在运行时就会被转变为 compute() 方法具体代码在内存中的地址，主要通过对象头里的类型指针去转换直接引用**
+
+
+
+#### 5、字符串常量池
+
+
+
+##### 1、字符串常量池的设计思想
+
+
+
+-   字符串的分配，和其他的对象分配一样，耗费高昂的时间与空间代价，作为最基础的数据类型，大量频繁的创建字符串，极大程度地影响程序的性能
+
+-   JVM为了提高性能和减少内存开销，在实例化字符串常量的时候进行了一些优化
+    -   为字符串开辟一个字符串常量池，类似于缓存区
+    -   创建字符串常量时，首先查询字符串常量池是否存在该字符串
+    -   存在该字符串，返回引用实例，不存在，实例化该字符串并放入池中
+
+
+
+##### 2、三种字符串操作
+
+
+
+-   直接赋值字符串
+
+```java
+String s = "lee";  // s指向常量池中的引用
+```
+
+这种方式创建的字符串对象，只会在常量池中、因为有 "lee" 这个字面量，创建对象 s 的时候，JVM 会先去常量池中通过 equals(key) 方法，判断是否有相同的对象、如果有，则直接返回该对象在常量池中的引用、如果没有，则会在常量池中创建一个新对象，再返回引用
+
+
+
+-   new String();
+
+```java
+String s1 = new String("lee");  // s1 指向内存中的对象引用
+```
+
+这种方式会保证字符串常量池和堆中都有这个对象，没有就创建，最后返回堆内存中的对象引用、步骤大致如下：
+
+-   因为有 "lee" 这个字面量，所以会先检查字符串常量池中是否存在字符串 "lee"
+-   不存在，先在字符串常量池里创建一个字符串对象；再去内存中创建一个字符串对象 "lee"；
+-   存在的话，就直接去堆内存中创建一个字符串对象 "lee"；
+-   最后，将内存中的引用返回
+
+
+
+-   intern() 方法
+
+```java
+String s1 = new String("lee");   
+String s2 = s1.intern();
+System.out.println(s1 == s2);  //false
+```
+
+String 中的 intern 方法是一个 native 的方法，当调用 intern方法时，如果池已经包含一个等于此 String 对象的字符串（用 equals(oject) 方法确定），则返回池中的字符串
+
+**否则，将 intern 返回的引用指向当前字符串 s1** (**jdk1.6版本需要将 s1 复制到字符串常量池里**)
+
+
+
+##### 3、字符串常量池位置
+
+
+
+用一个程序证明下字符串常量池在哪里
+
+-   Jdk1.6 及之前： 有永久代, 运行时常量池在永久代，运行时常量池包含字符串常量池
+-   Jdk1.7 有永久代，但已经逐步“去永久代”，字符串常量池从永久代里的运行时常量池分离到堆里
+-   Jdk1.8 及之后： 无永久代，运行时常量池在元空间，字符串常量池里依然在堆里
+
+```java
+/**
+ * jdk6：-Xms6M -Xmx6M -XX:PermSize=6M -XX:MaxPermSize=6M  
+ * jdk8：-Xms6M -Xmx6M -XX:MetaspaceSize=6M -XX:MaxMetaspaceSize=6M
+ */
+public class RuntimeConstantPoolOOM{
+    public static void main(String[] args) {
+        ArrayList<String> list = new ArrayList<String>();
+        for (int i = 0; i < 10000000; i++) {
+            String str = String.valueOf(i).intern();
+            list.add(str);
+        }
+    }
+}
+```
+
+```c++
+// 运行结果：
+jdk7 及以上：Exception in thread "main" java.lang.OutOfMemoryError: Java heap space
+jdk6：Exception in thread "main" java.lang.OutOfMemoryError: PermGen space
+```
+
+
+
+##### 4、字符串常量池设计原理
+
+
+
+字符串常量池底层是 hotspot 的 C++ 实现的，底层类似一个 HashTable， 保存的本质上是字符串对象的引用、看一道比较常见的面试题，下面的代码创建了多少个 String 对象
+
+```java
+// 在 JDK 1.6 下输出是 false，创建了 6 个对象
+// 在 JDK 1.7 及以上的版本输出是 true，创建了 5 个对象
+// 当然我们这里没有考虑GC，但这些对象确实存在或存在过
+String s1 = new String("he") + new String("llo");
+String s2 = s1.intern();
+ 
+System.out.println(s1 == s2);
+```
+
+
+
+>   为什么输出会有这些变化呢？主要还是字符串池从永久代中脱离、移入堆区的原因， intern() 方法也相应发生了变化：
+
+1、在 JDK 1.6 中，调用 intern() 首先会在字符串池中寻找 equal() 相等的字符串，假如字符串存在就返回该字符串在字符串池中的引用；假如字符串不存在，虚拟机会重新在永久代上创建一个实例，将 StringTable 的一个表项指向这个新创建的实例。
+
+![image-20210622155859200](JVM.assets/image-20210622155859200.png)
+
+
+
+2、在 JDK 1.7 (及以上版本)中，由于字符串池不在永久代了，intern() 做了一些修改，更方便地利用堆中的对象、字符串存在时和 JDK 1.6 一样，但是字符串不存在时不再需要重新创建实例，可以直接指向堆上的实例
+
+![image-20210622155930570](JVM.assets/image-20210622155930570.png)
+
+由上面两个图，也不难理解为什么 
+
+-   JDK 1.6 字符串池溢出会抛出 OutOfMemoryError: PermGen space 
+-   而在 JDK 1.7 及以上版本抛出 OutOfMemoryError: Java heap space 
+
+
+
+#### 6、字符串常量池的几个例子
+
+
+
+##### 1、示例 1
+
+```java
+String s0 = "zhuge";
+String s1 = "zhuge";
+String s2 = "zhu" + "ge";
+System.out.println( s0 == s1 ); //true
+System.out.println( s0 == s2 ); //true
+```
+
+分析：因为例子中的 s0 和 s1 中的 ”zhuge” 都是字符串常量，它们在编译期就被确定了，所以 s0 == s1 为 true；而 ”zhu” 和 ”ge” 也都是字符串常量，当一个字 符串由多个字符串常量连接而成时，它自己肯定也是字符串常量，所以 s2也同样在编译期就被优化为一个字符串常量 "zhuge"，所以 s2 也是常量池中 ” zhuge” 的一个引用。所以我们得出s0 == s1 == s2；
+
+
+
+##### 2、示例 2
+
+```java
+String s0 = "zhuge";
+String s1 = new String("zhuge");
+String s2 = "zhu" + new String("ge");
+System.out.println( s0 == s1 );　　// false
+System.out.println( s0 == s2 )；　 // false
+System.out.println( s1 == s2 );　　// false
+```
+
+分析：用 new String() 创建的字符串不是常量，不能在编译期就确定，所以 new String() 创建的字符串不放入常量池中，它们有自己的地址空间。
+
+s0 还是常量池中 "zhuge” 的引用，s1 因为无法在编译期确定，所以是运行时创建的新对象 ”zhuge” 的引用，s2 因为有后半部分 new String(”ge”) 所以也无法在编译期确定，所以也是一个新创建对象 ”zhuge” 的引用、明白了这些也就知道为何得出此结果了
+
+
+
+##### 3、示例 3
+
+```java
+String a = "a1";
+String b = "a" + 1;
+System.out.println(a == b); // true 
+
+String a = "atrue";
+String b = "a" + "true";
+System.out.println(a == b); // true 
+
+String a = "a3.4";
+String b = "a" + 3.4;
+System.out.println(a == b); // true
+```
+
+分析：JVM 对于字符串常量的 "+" 号连接，将在程序编译期，JVM 就将常量字符串的 "+" 连接优化为连接后的值，拿 "a" + 1 来说，经编译器优化后在 class 中就已经是 a1。在编译期其字符串常量的值就确定下来，故上面程序最终的结果都为 true
+
+
+
+##### 4、示例 4
+
+```java
+String a = "ab";
+String bb = "b";
+String b = "a" + bb;
+
+System.out.println(a == b); // false
+```
+
+JVM 对于字符串引用，由于在字符串的 "+" 连接中，有字符串引用存在，而引用的值在程序编译期是无法确定的，即 "a" + bb 无法被编译器优化，只有在程序运行期来动态分配并将连接后的新地址赋给 b。所以上面程序的结果也就为false
+
+
+
+##### 5、示例 5
+
+```java
+String a = "ab";
+final String bb = "b";
+String b = "a" + bb;
+
+System.out.println(a == b); // true
+```
+
+
+
+和示例 4 中唯一不同的是 bb 字符串加了 final 修饰，对于 final 修饰的变量，它在编译时被解析为常量值的一个本地拷贝存储到自己的常量池中或嵌入到它的字节码流中。所以此时的 "a" + bb 和 "a" + "b" 效果是一样的。故上面程序的结果为 true
+
+
+
+##### 6、示例 6
+
+```java
+String a = "ab";
+final String bb = getBB();
+String b = "a" + bb;
+
+System.out.println(a == b); // false
+
+private static String getBB() {  
+    return "b";  
+}
+```
+
+JVM 对于字符串引用 bb，它的值在编译期无法确定，只有在程序运行期调用方法后，将方法的返回值和 "a" 来动态连接并分配地址为 b，故上面 程序的结果为 false
+
+
+
+##### 7、关于 String 是不可变的
+
+
+
+-   通过上面例子可以得出得知
+
+```java
+String  s  =  "a" + "b" + "c";  //就等价于String s = "abc";
+String  a  =  "a";
+String  b  =  "b";
+String  c  =  "c";
+String  s1  =   a  +  b  +  c;
+```
+
+s1 这个就不一样了，可以通过观察其 **JVM指令码** 发现 s1 的 "+" 操作会变成如下操作
+
+```java
+StringBuilder temp = new StringBuilder();
+temp.append(a).append(b).append(c);
+String s = temp.toString();
+```
+
+
+
+##### 8、最后再看几个例子
+
+
+
+```java
+/**
+ * 字符串常量池："ja" 和 "va"  -> 内存：str1 引用的对象 "java"
+ *    堆内存中还有个 StringBuilder 的对象，但是会被 GC 回收
+ *    StringBuilder 的 toString 方法会 new String()，这个 String 才是真正返回的对象引用
+ *
+ * 没有出现 "java" 字面量，所以不会在常量池里生成 "java" 对象
+ */
+String str1 = new StringBuilder("ja").append("va").toString();
+/**
+ * java是关键字，在JVM初始化的相关类里肯定早就放进字符串常量池了
+ *   所以输出：true
+ */
+System.out.println(str1 == str1.intern());
+```
+
+```java
+/**
+ * 字符串常量池："计算机" 和 "技术"
+ *    堆内存：str1 引用的对象 "计算机技术"
+ *    堆内存中还有个 StringBuilder 的对象，但是会被 GC 回收
+ *    StringBuilder 的 toString() 方法会 new String()、这个 String 才是真正返回的对象引用
+ *
+ * 没有出现 "计算机技术" 字面量，所以不会在常量池里生成 "计算机技术" 对象
+ */
+String str2 = new StringBuilder("计算机").append("技术").toString();
+/**
+ * "计算机技术" 在池中没有，但是在 heap 中存在，则 intern 时，会直接返回该 heap 中的引用
+ * 所以输出 true
+ */
+System.out.println(str2 == str2.intern());
+```
+
+```java
+/**
+ * test" 作为字面量，放入了池中，而 new 时 s1 指向的是 heap 中新生成的 string 对象
+ *   s1.intern() 指向的是 "test" 字面量之前在池中生成的字符串对象
+ */
+String s1 = new String("test");
+System.out.println(s1 == s1.intern());//false
+
+//同上
+String s2 = new StringBuilder("abc").toString();
+System.out.println(s2 == s2.intern());//false
+```
+
+
+
+#### 7、八种基本类的包装类和对象池
+
+
+
+Java 中基本类型的包装类的大部分都实现了常量池技术 ( 严格来说应该叫**对象池，**在堆上 )，这些类是
+
+>   Byte、Short、Integer、Long、Character、Boolean、另外两种浮点数类型的包装类则没有实现
+
+另外 Byte、Short、Integer、Long、Character 这 5 种整型的包装类也只是在对应值小于等于 127 时才可使用对象池，也即对象不负责创建和管理大于 127 的这些类的对象。因为一般这种比较小的数用到的概率相对较大
+
+```java
+public static void main(String[] args) {
+    /**
+     * 5 种整形的包装类 Byte、Short、Integer、Long、Character 的对象
+     * 在值小于 127 时可以使用对象池
+     */
+    // 这种调用底层实际是执行的 Integer.valueOf(127)，里面用到了 IntegerCache 对象池
+    Integer i1 = 127;
+    Integer i2 = 127;
+    System.out.println(i1 == i2);//输出true  
+
+    //值大于 127 时，不会从对象池中取对象  
+    Integer i3 = 128;
+    Integer i4 = 128;
+    System.out.println(i3 == i4);//输出 false  
+
+    //用 new 关键词新生成对象不会使用对象池
+    Integer i5 = new Integer(127);
+    Integer i6 = new Integer(127);
+    System.out.println(i5 == i6);//输出 false 
+
+    //Boolean类也实现了对象池技术  
+    Boolean bool1 = true;
+    Boolean bool2 = true;
+    System.out.println(bool1 == bool2);//输出 true  
+
+    //浮点类型的包装类没有实现对象池技术  
+    Double d1 = 1.0;
+    Double d2 = 1.0;
+    System.out.println(d1 == d2);//输出 false  
+}
+```
+
+
+
+## 7、虚拟机性能监控命令
+
+
+
+### 1、JVM 自带的参数命令
+
+
+
+#### 1、JPS 命令
+
+
+
+>   通过 jps 命令用来查看进程 id、接着用各种 jdk 自带命令优化应用
+
+```c++
+C:\Users\19365>jps
+12688
+16048 Launcher
+15656 Jps
+5720 SpringBootEureka7001
+```
+
+
+
+#### 2、jmap -histo [ 进程id ] 命令
+
+
+
+>   该命令来查看指定 ID 的进程内存信息、实例个数以及占用内存大小
+>
+>   -   **num**：序号
+>   -   **instances**:  实例数量
+>   -   **bytes**：占用空件大小
+>   -   **class name**：类名成    [C is a char[]，[S is a short[]，[I is a int[]，[B is a byte[]，[[I is a int[][]
+
+```c++
+C:\Users\19365>jps
+12688
+16048 Launcher
+15656 Jps
+5720 SpringBootEureka7001
+
+C:\Users\19365>jmap -histo 5720
+
+ num     #instances         #bytes  class name
+----------------------------------------------
+   1:         12379       67057160  [I
+   2:         74001       26119936  [B
+   3:        132682       16461368  [C
+   4:         89512        2148288  java.lang.String
+   5:         23530        2070640  java.lang.reflect.Method
+   6:         11000        1214432  java.lang.Class
+   7:         37840        1210880  java.util.concurrent.ConcurrentHashMap$Node
+   8:         19559        1030088  [Ljava.lang.Object;
+   9:          9693         785608  [Ljava.util.HashMap$Node;
+...............................
+```
+
+
+
+**也可以 jmap -histo [进程id] > log.txt 来将内存信息输出到一个指定路径的文件中**
+
+
+
+#### 3、jmap -heap [ 进程id ] 命令
+
+
+
+>   查看堆信息命令、查看年轻伊甸老年代的使用情况等等
+
+```c++
+C:\Users\19365>jmap -heap 5720
+Attaching to process ID 5720, please wait...
+Debugger attached successfully.
+Server compiler detected.
+JVM version is 25.271-b09
+
+using thread-local object allocation.
+Parallel GC with 10 thread(s)
+
+Heap Configuration:
+   MinHeapFreeRatio         = 0
+   MaxHeapFreeRatio         = 100
+   MaxHeapSize              = 4259315712 (4062.0MB)
+   NewSize                  = 88604672 (84.5MB)
+   MaxNewSize               = 1419771904 (1354.0MB)
+   OldSize                  = 177733632 (169.5MB)
+   NewRatio                 = 2
+   SurvivorRatio            = 8
+   MetaspaceSize            = 21807104 (20.796875MB)
+   CompressedClassSpaceSize = 1073741824 (1024.0MB)
+   MaxMetaspaceSize         = 17592186044415 MB
+   G1HeapRegionSize         = 0 (0.0MB)
+
+Heap Usage:
+PS Young Generation
+Eden Space:
+   capacity = 303562752 (289.5MB)
+   used     = 95309440 (90.8941650390625MB)
+   free     = 208253312 (198.6058349609375MB)
+   31.39694820002159% used
+From Space:
+   capacity = 15204352 (14.5MB)
+   used     = 15185672 (14.482185363769531MB)
+   free     = 18680 (0.01781463623046875MB)
+   99.87714043978987% used
+To Space:
+   capacity = 18874368 (18.0MB)
+   used     = 0 (0.0MB)
+   free     = 18874368 (18.0MB)
+   0.0% used
+PS Old Generation
+   capacity = 159383552 (152.0MB)
+   used     = 23978912 (22.868072509765625MB)
+   free     = 135404640 (129.13192749023438MB)
+   15.044784545898438% used
+
+23248 interned Strings occupying 2192040 bytes.
+```
+
+
+
+#### 4、jmap -dump 堆快照信息
+
+
+
+>   jmap ‐dump:format = b, file = [文件名]  [进程id]
+>
+>   可以将堆的快照信息输出到文件中，并配合 JvisualVM 工具进行配合查看
+
+-   文件默认保存位置：C:\Users\用户名\
+
+```c++
+C:\Users\19365>jps
+12688
+16048 Launcher
+5720 SpringBootEureka7001
+10396 Jps
+
+C:\Users\19365>jmap -dump:format=b,file=eureka.hprof 5720
+Dumping heap to C:\Users\19365\eureka.hprof ...
+Heap dump file created
+```
+
+
+
+#### 5、Jstack [ 进程id ]  查找死锁
+
+
+
+##### 1、创建一个死锁程序并运行
+
+
+
+>   我们创建一个死锁程序运行、如下代码
+
+```java
+package lee.learning.video.thread.basics;
+
+/**
+ * 死锁问题演示
+ */
+public class LeeThread7 {
+    public static void main(String[] args) {
+        Runnable runA = new Runnable() {
+            @Override
+            public void run() {
+                synchronized ("A"){
+                    System.out.println("线程 A 持有了 A 锁、等待 B 锁");
+                    synchronized ("B"){
+                        System.out.println("线程 A 同时持有了 A 锁、 B 锁");
+                    }
+                }
+            }
+        };
+
+        Runnable runB = new Runnable() {
+            @Override
+            public void run() {
+                synchronized("B"){
+                    System.out.println("线程 B 持有了 B 锁、等待 A 锁");
+                    synchronized ("A"){
+                        System.out.println("线程 B 同时持有了 A 锁、B 锁");
+                    }
+                }
+            }
+        };
+
+        Thread threadA = new Thread(runA, "Thread A");
+        Thread threadB = new Thread(runB, "Thread B");
+        threadA.start();
+        threadB.start();
+    }
+}
+```
+
+
+
+##### 2、用 jps 命令查看进程
+
+
+
+-   我们用 jps 查看下死锁进程的 id 号
+
+```java
+C:\Users\19365>jps
+12688
+2580 Jps
+3380 LeeThread7
+7044 Launcher
+```
+
+
+
+##### 3、用 Jstack [ 进程id ] 查找死锁
+
+
+
+-   完整的输出如下
+
+```c++
+C:\Users\19365>Jstack 3380
+2021-06-22 11:24:22
+Full thread dump Java HotSpot(TM) 64-Bit Server VM (25.271-b09 mixed mode):
+
+"DestroyJavaVM" #14 prio=5 os_prio=0 tid=0x0000016c18440000 nid=0x32c waiting on condition [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"Thread B" #13 prio=5 os_prio=0 tid=0x0000016c3584b000 nid=0x19f4 waiting for monitor entry [0x00000017602ff000]
+   java.lang.Thread.State: BLOCKED (on object monitor)
+        at lee.learning.video.thread.basics.LeeThread7$2.run(LeeThread7.java:26)
+        - waiting to lock <0x000000076bb14bc0> (a java.lang.String)
+        - locked <0x000000076bd9f120> (a java.lang.String)
+        at java.lang.Thread.run(Thread.java:748)
+
+"Thread A" #12 prio=5 os_prio=0 tid=0x0000016c35864000 nid=0xc5c waiting for monitor entry [0x00000017601ff000]
+   java.lang.Thread.State: BLOCKED (on object monitor)
+        at lee.learning.video.thread.basics.LeeThread7$1.run(LeeThread7.java:14)
+        - waiting to lock <0x000000076bd9f120> (a java.lang.String)
+        - locked <0x000000076bb14bc0> (a java.lang.String)
+        at java.lang.Thread.run(Thread.java:748)
+
+"Attach Listener" #5 daemon prio=5 os_prio=2 tid=0x0000016c330a0000 nid=0x31ec waiting on condition [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"Signal Dispatcher" #4 daemon prio=9 os_prio=2 tid=0x0000016c3308a000 nid=0x1e00 runnable [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"Finalizer" #3 daemon prio=8 os_prio=1 tid=0x0000016c33071000 nid=0xf8c in Object.wait() [0x000000175f7ff000]
+   java.lang.Thread.State: WAITING (on object monitor)
+        at java.lang.Object.wait(Native Method)
+        - waiting on <0x000000076b608ee0> (a java.lang.ref.ReferenceQueue$Lock)
+        at java.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:144)
+        - locked <0x000000076b608ee0> (a java.lang.ref.ReferenceQueue$Lock)
+        at java.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:165)
+        at java.lang.ref.Finalizer$FinalizerThread.run(Finalizer.java:216)
+
+"Reference Handler" #2 daemon prio=10 os_prio=2 tid=0x0000016c33069800 nid=0x3c8 in Object.wait() [0x000000175f6fe000]
+   java.lang.Thread.State: WAITING (on object monitor)
+        at java.lang.Object.wait(Native Method)
+        - waiting on <0x000000076b606c00> (a java.lang.ref.Reference$Lock)
+        at java.lang.Object.wait(Object.java:502)
+        at java.lang.ref.Reference.tryHandlePending(Reference.java:191)
+        - locked <0x000000076b606c00> (a java.lang.ref.Reference$Lock)
+        at java.lang.ref.Reference$ReferenceHandler.run(Reference.java:153)
+
+
+JNI global references: 12
+
+
+Found one Java-level deadlock:
+=============================
+"Thread B":
+  waiting to lock monitor 0x0000016c3306f488 (object 0x000000076bb14bc0, a java.lang.String),
+  which is held by "Thread A"
+"Thread A":
+  waiting to lock monitor 0x0000016c33070928 (object 0x000000076bd9f120, a java.lang.String),
+  which is held by "Thread B"
+
+Java stack information for the threads listed above:
+===================================================
+"Thread B":
+        at lee.learning.video.thread.basics.LeeThread7$2.run(LeeThread7.java:26)
+        - waiting to lock <0x000000076bb14bc0> (a java.lang.String)
+        - locked <0x000000076bd9f120> (a java.lang.String)
+        at java.lang.Thread.run(Thread.java:748)
+"Thread A":
+        at lee.learning.video.thread.basics.LeeThread7$1.run(LeeThread7.java:14)
+        - waiting to lock <0x000000076bd9f120> (a java.lang.String)
+        - locked <0x000000076bb14bc0> (a java.lang.String)
+        at java.lang.Thread.run(Thread.java:748)
+
+Found 1 deadlock.
+```
+
+>   我们可以看到最后的 Found 1 deadlock. 找到了死锁详情
+>
+>   -   Thread-1：线程名
+>   -   prio=5：优先级=5
+>   -   tid=0x000000001fa9e000：线程id
+>   -   nid=0x2d64：线程对应的本地线程标识 nid
+>   -   java.lang.Thread.State: BLOCKED：线程状态
+
+也可以借助 Jvisualvm 工具，打开自动识别 Java 进程，自动检测进程死锁信息
+
+
+
+#### 6、jinfo -flags [ 进程id ] 扩展参数
+
+
+
+>   查看正在运行的 Java 应用程序的扩展参数、查看 JVM 的参数
+
+![image-20210622121248563](JVM.assets/image-20210622121248563.png)
+
+
+
+#### 7、jinfo -sysprops [ 进程id ]
+
+
+
+>   查看 Java 系统参数
+
+![image-20210622121333094](JVM.assets/image-20210622121333094.png)
+
+
+
+#### 8、垃圾回收统计命令
+
+
+
+jstat 命令（重要）可以查看堆内存各部分的使用量，以及加载类的数量。命令的格式如下
+
+jstat [ -命令选项 ] [ vmid ] [ 间隔时间(毫秒) ] [ 查询次数 ]         -->       jstat -gc 21968 2000 10
+
+**注意：使用的 JDK 版本是 JDK1.8、下面开始我们将详细演示 Jstat 命令的使用**
+
+
+
+##### 1、jstat -gc pid (最常用)
+
+
+
+>   评估程序内存使用及 GC 压力整体情况
+
+<img src="JVM.assets/image-20210622122553461.png" alt="image-20210622122553461" style="zoom:150%;" />
+
+-   S0C：第一个幸存区的大小，单位 KB
+-   S1C：第二个幸存区的大小
+-   S0U：第一个幸存区的使用大小
+-   S1U：第二个幸存区的使用大小
+-   EC：伊甸园区的大小
+-   EU：伊甸园区的使用大小
+-   OC：老年代大小
+-   OU：老年代使用大小
+-   MC：方法区大小(元空间)
+-   MU：方法区使用大小
+-   CCSC：压缩类空间大小
+-   CCSU：压缩类空间使用大小
+-   YGC：年轻代垃圾回收次数
+-   YGCT：年轻代垃圾回收消耗时间，单位 s
+-   FGC：老年代垃圾回收次数
+-   FGCT：老年代垃圾回收消耗时间，单位 s
+-   GCT：垃圾回收消耗总时间，单位 s
+
+
+
+##### 2、jstat -gcutil pid
+
+```c++
+jstat -gcutil 11900
+S0     S1     E      O      M     CCS    YGC     YGCT    FGC    FGCT     GCT
+0.00   0.00  16.00   0.00  17.33  19.94      0    0.000     0    0.000    0.000
+```
+
+-   S0：幸存 1 区当前使用比例
+-   S1：幸存 2 区当前使用比例
+-   E：伊甸园区使用比例
+-   O：老年代使用比例
+-   M：元数据区使用比例
+-   CCS：压缩使用比例
+-   YGC：年轻代垃圾回收次数
+-   FGC：老年代垃圾回收次数
+-   FGCT：老年代垃圾回收消耗时间
+-   GCT：垃圾回收消耗总时间
+
+
+
+##### 3、jstat -gccapacity pid
+
+
+
+>   堆内存统计
+
+```java
+jstat -gccapacity 11900
+ NGCMN    NGCMX     NGC     S0C   S1C       EC      OGCMN      OGCMX       OGC         OC       MCMN     MCMX      MC     CCSMN    CCSMX     CCSC    YGC    FGC
+ 86528.0 1386496.0  86528.0 10752.0 10752.0  65024.0   173568.0  2772992.0   173568.0   173568.0      0.0 1056768.0   4480.0      0.0 1048576.0    384.0      0     0
+```
+
+-   NGCMN：新生代最小容量
+-   NGCMX：新生代最大容量
+-   NGC：当前新生代容量
+-   S0C：第一个幸存区大小
+-   S1C：第二个幸存区的大小
+-   EC：伊甸园区的大小
+-   OGCMN：老年代最小容量
+-   OGCMX：老年代最大容量
+-   OGC：当前老年代大小
+-   OC：当前老年代大小
+-   MCMN：最小元数据容量
+-   MCMX：最大元数据容量
+-   MC：当前元数据空间大小
+-   CCSMN：最小压缩类空间大小
+-   CCSMX：最大压缩类空间大小
+-   CCSC：当前压缩类空间大小
+-   YGC：年轻代 GC 次数
+-   FGC：老年代 GC 次数
+
+
+
+##### 4、jstat -gcnew pid 
+
+
+
+>   新生代垃圾回收统计
+
+```java
+jstat -gcnew 11900
+ S0C    S1C    S0U    S1U   TT MTT  DSS      EC       EU     YGC     YGCT
+10752.0 10752.0    0.0    0.0 15  15    0.0  65024.0  10405.3      0    0.000
+```
+
+-   S0C：第一个幸存区的大小
+-   S1C：第二个幸存区的大小
+-   S0U：第一个幸存区的使用大小
+-   S1U：第二个幸存区的使用大小
+-   TT: 对象在新生代存活的次数
+-   MTT: 对象在新生代存活的最大次数
+-   DSS: 期望的幸存区大小
+-   EC：伊甸园区的大小
+-   EU：伊甸园区的使用大小
+-   YGC：年轻代垃圾回收次数
+-   YGCT：年轻代垃圾回收消耗时间
+
+
+
+##### 5、jstat -gcnewcapacity pid
+
+
+
+>   新生代内存统计
+
+```java
+jstat -gcnewcapacity 11900
+  NGCMN      NGCMX       NGC      S0CMX     S0C     S1CMX     S1C       ECMX        EC      YGC   FGC
+   86528.0  1386496.0    86528.0 461824.0  10752.0 461824.0  10752.0  1385472.0    65024.0     0     0
+```
+
+-   NGCMN：新生代最小容量
+-   NGCMX：新生代最大容量
+-   NGC：当前新生代容量
+-   S0CMX：最大幸存 1 区大小
+-   S0C：当前幸存 1 区大小
+-   S1CMX：最大幸存 2 区大小
+-   S1C：当前幸存 2 区大小
+-   ECMX：最大伊甸园区大小
+-   EC：当前伊甸园区大小
+-   YGC：年轻代垃圾回收次数
+-   FGC：老年代回收次数
+
+
+
+##### 6、jstat -gcold pid
+
+
+
+>   老年代垃圾回收统计
+
+```java
+jstat -gcold 11900
+   MC       MU      CCSC     CCSU       OC          OU       YGC    FGC    FGCT     GCT
+  4480.0    776.5    384.0     76.6    173568.0         0.0      0     0    0.000    0.000
+```
+
+-   MC：方法区大小
+-   MU：方法区使用大小
+-   CCSC：压缩类空间大小
+-   CCSU：压缩类空间使用大小
+-   OC：老年代大小
+-   OU：老年代使用大小
+-   YGC：年轻代垃圾回收次数
+-   FGC：老年代垃圾回收次数
+-   FGCT：老年代垃圾回收消耗时间
+-   GCT：垃圾回收消耗总时间
+
+
+
+##### 7、jstat -gcoldcapacity pid
+
+
+
+>   老年代内存统计
+
+```java
+jstat -gcoldcapacity 11900
+   OGCMN       OGCMX        OGC         OC       YGC   FGC    FGCT     GCT
+   173568.0   2772992.0    173568.0    173568.0     0     0    0.000    0.000
+```
+
+-   OGCMN：老年代最小容量
+-   OGCMX：老年代最大容量
+-   OGC：当前老年代大小
+-   OC：老年代大小
+-   YGC：年轻代垃圾回收次数
+-   FGC：老年代垃圾回收次数
+-   FGCT：老年代垃圾回收消耗时间
+-   GCT：垃圾回收消耗总时间
+
+
+
+##### 8、jstat -gcmetacapacity pid
+
+
+
+>   元数据空间统计
+
+```java
+jstat -gcmetacapacity 11900
+   MCMN       MCMX        MC       CCSMN      CCSMX       CCSC     YGC   FGC    FGCT     GCT
+     0.0  1056768.0     4480.0        0.0  1048576.0      384.0     0     0    0.000    0.000
+```
+
+-   MCMN: 最小元数据容量
+-   MCMX：最大元数据容量
+-   MC：当前元数据空间大小
+-   CCSMN：最小压缩类空间大小
+-   CCSMX：最大压缩类空间大小
+-   CCSC：当前压缩类空间大小
+-   YGC：年轻代垃圾回收次数
+-   FGC：老年代垃圾回收次数
+-   FGCT：老年代垃圾回收消耗时间
+-   GCT：垃圾回收消耗总时间
+
+
+
+### 2、JVM 自带 Jvisualvm 分析工具
+
+
+
+#### 1、Jvisualvm 分析工具 OOM
+
+
+
+##### 1、设置一个导致 OOM 的代码
+
+
+
+>   下面的 Java 代码一定会导致 OOM 内存溢出
+
+-   User 类
+
+```java
+public class User {
+    private int id;
+    private String name;
+
+    public User(int id, String name) {
+        this.id = id;
+        this.name = name;
+    }
+
+    public int getId() {
+        return id;
+    }
+    public void setId(int id) {
+        this.id = id;
+    }
+    public String getName() {
+        return name;
+    }
+    public void setName(String name) {
+        this.name = name;
+    }
+}
+```
+
+-   测试类
+
+```java
+public class OOMTest {
+
+    public static List<Object> list = new ArrayList<>();
+
+    //JVM设置
+    //-Xms5M -Xmx5M -XX:+PrintGCDetails -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=D:\OOMJVM.dump
+    public static void main(String[] args) {
+        List<Object> list = new ArrayList<>();
+        int i = 0;
+        int j = 0;
+        while (true) {
+            list.add(new User(i++, UUID.randomUUID().toString()));
+            new User(j--, UUID.randomUUID().toString());
+        }
+    }
+}
+```
+
+
+
+##### 2、设置 JVM 参数
+
+
+
+![image-20210622113650559](JVM.assets/image-20210622113650559.png)
+
+
+
+>   设置 JVM 参数
+>
+>   -   -Xms5M -Xmx5M：设置元空间大小 5 M
+>   -   -XX:+PrintGCDetails：打印 GC 日志
+>   -   -XX:HeapDumpPath=D:\OOMJVM.dump：设置堆内存快照文件生成地址
+>
+>   详解：该参数会在 JVM 内存溢出的时候把堆的详细快照保存到指定目录 D 盘的 OOMJVM.dump 文件中，配合 jvisualvm 工具来分析溢出情况
+
+```c++
+-Xms5M -Xmx5M -XX:+PrintGCDetails -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=D:\OOMJVM.dump
+```
+
+
+
+##### 3、启动该段代码进行测试
+
+
+
+-   报错如下
+
+```ABAP
+Heap
+ PSYoungGen      total 1536K, used 37K [0x00000000ffe00000, 0x0000000100000000, 0x0000000100000000)
+  eden space 1024K, 3% used [0x00000000ffe00000,0x00000000ffe096d8,0x00000000fff00000)
+  from space 512K, 0% used [0x00000000fff00000,0x00000000fff00000,0x00000000fff80000)
+  to   space 512K, 0% used [0x00000000fff80000,0x00000000fff80000,0x0000000100000000)
+ ParOldGen       total 4096K, used 845K [0x00000000ffa00000, 0x00000000ffe00000, 0x00000000ffe00000)
+  object space 4096K, 20% used [0x00000000ffa00000,0x00000000ffad3610,0x00000000ffe00000)
+ Metaspace       used 3926K, capacity 4572K, committed 4864K, reserved 1056768K
+  class space    used 436K, capacity 460K, committed 512K, reserved 1048576K
+Exception in thread "main" java.lang.OutOfMemoryError: GC overhead limit exceeded
+	at java.util.UUID.randomUUID(UUID.java:144)
+	at lee.learning.video.jvm.gc.OOMTest.main(OOMTest.java:20)
+```
+
+
+
+##### 4、启动 Jvisualvm 工具
+
+
+
+>   在 windows 搜索框输入 Jvisualvm ，运行该程序、Jvisualvm 装入 dump 快照文件分析步骤如下
+
+
+
+###### 1、打开 Jvisualvm 菜单
+
+
+
+-   文件  ----> 装入
+
+![image-20210622115550133](JVM.assets/image-20210622115550133.png)
+
+
+
+###### 2、文件类型选择 堆 Dump
+
+
+
+![image-20210622115631914](JVM.assets/image-20210622115631914.png)
+
+
+
+###### 3、选择生成的堆快照文件后分析
+
+
+
+![image-20210622115739286](JVM.assets/image-20210622115739286.png)
+
+
+
+>   我们可以看到 其实 User 类的实例数占了 29 % 左右，String 类的实例数 32%、char[] 数组的实例数 32.6%
+
+
+
+我们先看测试类关键代码
+
+-   list.add 不停的在创建 User 对象，这也正是 User 类型比重大的原因
+-   不断的通过有参构造函数传入 String 类型的 UUID、这也正是 String 类型比重大的原因，char[] 数组比例大完全是因为 String 底层使用 char[] 数组来实现的
+
+```java
+while (true) {
+    list.add(new User(i++, UUID.randomUUID().toString()));
+    new User(j--, UUID.randomUUID().toString());
+}
+```
+
+
+
+#### 2、Jvisualvm 的远程链接服务端监控
+
+
+
+>   Linux系统输入以下参数：
+
+java ‐Dcom.sun.management.jmxremote.port=8888(远程服务的JMX端口) 
+
+‐Djava.rmi.server.hostname=192.168.50.60(远程服务器IP)
+
+‐Dcom.sun.management.jmxremote.ssl=false ‐Dcom.sun.management.jmxremote.authenticate=false ‐jar microservice‐eureka‐server.jar
+
+>   tomcat 的JMX配置：在 catalina.sh 文件里的最后一个 JAVA_OPTS 的赋值语句下一行增加如下配置行
+
+JAVA_OPTS="$JAVA_OPTS ‐Dcom.sun.management.jmxremote.port=8888 
+
+‐Djava.rmi.server.hostname=192.168.50.60 ‐Dcom.sun.ma
+
+nagement.jmxremote.ssl=false ‐Dcom.sun.management.jmxremote.authenticate=false"
+
+>   连接时确认下端口是否通畅，可以临时关闭以下防火墙
+
+systectl stop firewalld #临时关闭防火墙
+
+
+
+**注意：一般生产环境都是隔离运行的，这些端口都是不开启的，安全起见，所以远程连接一般用不上，后面会介绍专门的远程连接工具使用**
+
+
+
+### 3、Linux 系统下 JVM 分析
+
+
+
+#### 1、找出 cpu 最高的线程堆栈信息
+
+
+
+>   使用 top 命令查看 cpu 使用情况排行榜
+
+![image-20210622120901709](JVM.assets/image-20210622120901709.png)
+
+
+
+>   使用 top -p <pid> 显示 java 进程的内存使用情况、pid 是你的 java 进程号
+
+![image-20210622120951734](JVM.assets/image-20210622120951734.png)
+
+
+
+>   按 H (大写) 获取该进程的每个线程的内存和CPU使用情况
+
+![image-20210622121012789](JVM.assets/image-20210622121012789.png)
+
+
+
+>   找到最大使用 CPU 最高的线程 pid,  比如 19664 . 并将转换为十六进制得到 0x4cd0、此为线程的十六进制表示
+
+>   执行 jstack 19663 | grep -A 10 4cd0 得到线程堆栈信息中 4cd0 这个线程所在行的后面 10 行，从堆栈中可以发现导致 CPU 飙到高的调用方法. 查看对应的堆栈信息找出可能存在问题的代码
+
+
+
+### 4、Alibaba Arthas 工具详解
+
+
+
+#### 1、Arthas 工具介绍
+
+
+
+>   Arthas 是 Alibaba 在 2018 年 9 月开源的 Java 诊断工具、支持 JDK6、采用命令行交互模式、可以方便的定位和诊断线上程序运行问题、Arthas 官方文档十分详细
+
+**Download**
+
+```sql
+# github 下载 arthas
+wget https://alibaba.github.io/arthas/arthas-boot.jar
+# 或者 Gitee 下载
+wget https://arthas.gitee.io/arthas-boot.jar
+```
+
+
+
+**参考文档**
+
+-   Arthas Github 说明文档：https://alibaba.github.io/arthas
+-   更多命令使用可以用 help 命令查看，或查看文档：https://alibaba.github.io/arthas/commands.html#arthas
+
+**Arthas 使用场景**
+
+得益于 **Arthas** 强大且丰富的功能，让 **Arthas** 能做的事情超乎想象。下面仅仅列举几项常见的使用情况，更多的使用场景可以在熟悉了 **Arthas** 之后自行探索
+
+1.  是否有一个全局视角来查看系统的运行状况？
+2.  为什么 CPU 又升高了，到底是哪里占用了 CPU ？
+3.  运行的多线程有死锁吗？有阻塞吗？
+4.  程序运行耗时很长，是哪里耗时比较长呢？如何监测呢？
+5.  这个类从哪个 jar 包加载的？为什么会报各种类相关的 Exception？
+6.  我改的代码为什么没有执行到？难道是我没 commit？分支搞错了？
+7.  遇到问题无法在线上 debug，难道只能通过加日志再重新发布吗？
+8.  有什么办法可以监控到 JVM 的实时运行状态？
+
+
+
+#### 2、Arthas 命令的快速入门
+
+
+
+>   该命令来查看进程内存信息、实例个数以及占用内存大小、也可以 jmap -histo [进程id] > log.txt 来将内存信息输出到一个指定路径的文件中
+
+
+
+##### 1、识别 Linux 的 Java 进程
+
+
+
+-   我们模拟死锁和 CPU过高
+
+```java
+package com.tuling.jvm;
+
+import java.util.HashSet;
+
+public class Arthas {
+
+    private static HashSet hashSet = new HashSet();
+
+    public static void main(String[] args) {
+        // 模拟 CPU 过高
+        cpuHigh();
+        // 模拟线程死锁
+        deadThread();
+        // 不断的向 hashSet 集合增加数据
+        addHashSetThread();
+    }
+
+    /**
+     * 不断的向 hashSet 集合添加数据
+     */
+    public static void addHashSetThread() {
+        // 初始化常量
+        new Thread(() -> {
+            int count = 0;
+            while (true) {
+                try {
+                    hashSet.add("count" + count);
+                    Thread.sleep(1000);
+                    count++;
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
+    }
+
+    public static void cpuHigh() {
+        new Thread(() -> {
+            while (true) {
+            }
+        }).start();
+    }
+
+    /**
+     * 死锁
+     */
+    private static void deadThread() {
+        Runnable runA = new Runnable() {
+            @Override
+            public void run() {
+                synchronized ("A"){
+                    System.out.println("线程 A 持有了 A 锁、等待 B 锁");
+                    synchronized ("B"){
+                        System.out.println("线程 A 同时持有了 A 锁、 B 锁");
+                    }
+                }
+            }
+        };
+
+        Runnable runB = new Runnable() {
+            @Override
+            public void run() {
+                synchronized("B"){
+                    System.out.println("线程 B 持有了 B 锁、等待 A 锁");
+                    synchronized ("A"){
+                        System.out.println("线程 B 同时持有了 A 锁、B 锁");
+                    }
+                }
+            }
+        };
+
+        Thread threadA = new Thread(runA, "Thread A");
+        Thread threadB = new Thread(runB, "Thread B");
+        threadA.start();
+        threadB.start();
+    }
+}
+```
+
+-   用 java -jar arthas-boot.jar 运行即可，可以识别机器上所有的 Java 进程
+
+![image-20210622124919359](JVM.assets/image-20210622124919359.png)
+
+
+
+-   选择进程序号 1、进入进程信息操作
+
+![image-20210622124955287](JVM.assets/image-20210622124955287.png)
+
+
+
+##### 2、dashboard 性能监控控制台
+
+
+
+-   输入 dashboard 可以查看整个进程的运行情况，线程、内存、GC、运行环境信息
+
+![image-20210622125018694](JVM.assets/image-20210622125018694.png)
+
+
+
+##### 3、thread 查看线程详细情况
+
+
+
+###### 1、thread 查看线程详细情况
+
+![image-20210622125056038](JVM.assets/image-20210622125056038.png)
+
+
+
+###### 2、thread 线程id 查看线程堆栈
+
+![image-20210622125155544](JVM.assets/image-20210622125155544.png)
+
+
+
+###### 3、 thread -b 查看死锁
+
+![image-20210622125224787](JVM.assets/image-20210622125224787.png)
+
+
+
+##### 4、jad 命令反编译 .class 文件
+
+
+
+>   输入 jad 加类的全名 可以反编译，这样可以方便我们查看线上代码是否是正确的版本
+
+![image-20210622125351014](JVM.assets/image-20210622125351014.png)
+
+
+
+##### 5、ognl 命令修改线上内存的值
+
+
+
+>   使用 ognl 命令可以查看线上系统变量的值，甚至可以修改变量的值
+
+
+
+![image-20210622125414087](JVM.assets/image-20210622125414087.png)
+
+
+
+## 8、JVM 性能调优案例
+
+
+
+### 1、JVM 运行情况预估
+
+
+
+#### 1、查看系统的参数
+
+
+
+用 jstat gc -pid 命令可以计算出如下一些关键数据、有了这些数据就可以采用之前介绍的优化思路，先给自己的系统设置一些初始性的 JVM 参数，比如堆内存大小，年轻代大小，Eden 和 Survivor 的比例、老年代的大小、大对象的阈值，大对象进入老年代的阈值等
+
+
+
+#### 2、年轻代的增长的速率
+
+
+
+可以执行命令 jstat -gc pid 1000 10 (每隔 1 秒执行 1 次命令，共执行 10 次)，通过观察 EU ( eden 区的使用) 来估算每秒 eden 大概新增多少对象，如果系统负载不高，可以把频率 1 秒换成 1 分钟，甚至 10 分钟来观察整体情况。注意，一般系统可能有高峰期和日常期，所以需要在不同的时间分别估算不同情况下对象增长速率
+
+
+
+#### 3、Young GC 的触发频率和每次耗时
+
+
+
+知道年轻代对象增长速率我们就能推根据eden区的大小推算出 Young GC 大概多久触发一次，Young GC 的平均耗时可以通过 YGCT/YGC 公式算出，根据结果我们大概就能知道系统大概多久会因为 Young GC 的执行而卡顿多久
+
+
+
+#### 4、每次 Young GC 后有多少对象存活或进入老年代
+
+
+
+这个因为之前已经大概知道 Young GC 的频率，假设是每 5 分钟一次，那么可以执行命令 jstat -gc pid 300000 10，观察每次结果 Eden、Survivor 和老年代使用的变化情况在每次 GC 后 Eden 区使用一般会大幅减少，Survivor 和老年代都有可能增长，这些增长的对象就是每次 Young GC 后存活的对象，同时还可以看出每次 Young GC 后进去老年代大概多少对象，从而可以推算出老年代对象增长速率
+
+
+
+#### 5、Full GC的触发频率和每次耗时
+
+
+
+知道了老年代对象的增长速率就可以推算出 Full GC 的触发频率了，Full GC 的每次耗时可以用公式 FGCT/FGC 计算得出
+
+>   优化思路：
+
+其实简单来说就是尽量让每次 Young GC 后的存活对象小于 Survivor 区域的 50%，都留存在年轻代里。尽量别让对象进入老年代、尽量减少 Full GC 的频率，避免频繁 Full GC  对 JVM 系统性能的影响
+
+
+
+
+
+
+
+### 2、JVM GC 日志详解
+
+
+
+#### 1、Java 应用开启打印 GC 
+
+
+
+>   把程序运行过程中的 GC 日志全部打印出来，然后分析 GC 日志得到关键性指标，分析 GC 原因，调优 JVM 参数
+
+打印 GC 日志方法，在 JVM 参数里增加参数，%t 代表时间
+
+```java
+-Xloggc:./gc-%t.log -XX:+PrintGCDetails -XX:+PrintGCDateStamps  -XX:+PrintGCTimeStamps -XX:+PrintGCCause  
+-XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=100M
+```
+
+Tomcat 则直接加在 JAVA_OPTS 变量里
+
+
+
+#### 2、如何分析 GC 日志
+
+
+
+>   jar 命令运行程序加上对应的 GC 日志
+
+```java
+java -jar -Xloggc:./gc-%t.log -XX:+PrintGCDetails -XX:+PrintGCDateStamps  -XX:+PrintGCTimeStamps -XX:+PrintGCCause  
+-XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=100M microservice-eureka-server.jar
+```
+
+下图中是截取的 JVM 刚启动的一部分 GC 日志
+
+![image-20210622134525841](JVM.assets/image-20210622134525841.png)
+
+
+
+我们可以看到图中第一行红框，是项目的配置参数。这里不仅配置了打印 GC 日志，还有相关的 VM 内存参数、第二行红框中的是在这个 GC 时间点发生 GC 之后相关 GC 情况
+
+-   **对于 2.909**：这是从JVM启动开始计算到这次GC经过的时间、前面还有具体的发生时间日期
+-   **Full GC(Metadata GC Threshold)**：指合适一次 Full GC、括号里是 GC 的原因、PSYoungGen 是年轻代的 GC、ParOldGen 是老年代的 GC、Metaspace 是元空间的 GC
+-   **6160K -> 0K(141824K)**：这三个数字分别对应 GC 之前占用年轻代的大小、GC 之后年轻代的占用、以及整个年轻代的大小
+-   **112K->6056K(95744K)**：这三个数字分别对应 GC 之前占用老年代的大小，GC 之后老年代占用，以及整个老年代的大小
+-   **6272K->6056K(237568K)**：这三个数字分别对应 GC 之前占用堆内存的大小，GC 之后堆内存占用，以及整个堆内存的大小
+-   **20516K->20516K(1069056K)**：这三个数字分别对应 GC 之前占用元空间内存的大小，GC 之后元空间内存占用，以及整个元空间内存的大小
+-   **0.0209707** 是该时间点 GC 总耗费时间
+
+>   从日志可以发现几次 Full GC 都是由于元空间不够导致的，所以我们可以将元空间调大点
+
+```java
+java -jar -Xloggc:./gc-adjust-%t.log -XX:MetaspaceSize=256M -XX:MaxMetaspaceSize=256M 
+     -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -XX:+PrintGCCause 
+     -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=100M 
+     microservice-eureka-server.jar
+```
+
+调整完我们再看下gc日志发现已经没有因为元空间不够导致的 Full GC 了
+
+对于 CMS 和 G1 收集器的日志会有一点不一样，也可以试着打印下对应的 GC 日志分析下，可以发现 GC 日志里面的 GC 步骤跟我们之前讲过的步骤是类似的
+
+
+
+>   CMS：
+
+```java
+-Xloggc:d:/gc-cms-%t.log -Xms50M -Xmx50M -XX:MetaspaceSize=256M -XX:MaxMetaspaceSize=256M
+    -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -XX:+PrintGCCause 
+    -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=100M
+    -XX:+UseParNewGC -XX:+UseConcMarkSweepGC
+```
+
+
+
+>   G1：
+
+```java
+-Xloggc:d:/gc-g1-%t.log -Xms50M -Xmx50M -XX:MetaspaceSize=256M -XX:MaxMetaspaceSize=256M 
+    -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -XX:+PrintGCCause 
+    -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=100M -XX:+UseG1GC
+```
+
+
+
+上面的这些参数，能够帮我们查看分析 GC 的垃圾收集情况。但是如果 GC 日志很多很多，成千上万行。就算你一目十行，看完了，脑子也是一片空白。所以我们可以借助一些功能来帮助我们分析，这里推荐一个 
+
+>   GCEasy ( https://gceasy.io )，可以上传 GC 文件，然后他会利用可视化的界面来展现 GC 情况
+
+具体下图所示
+
+![image-20210622141410255](JVM.assets/image-20210622141410255.png)
+
+上图我们可以看到年轻代、老年代、以及永久代的内存分配。和最大使用情况
+
+![image-20210622141437475](JVM.assets/image-20210622141437475.png)
+
+上图我们可以看到堆内存在 GC 之前和之后的变化，以及其他信息。 这个工具还提供基于机器学习的 JVM 智能优化建议，当然现在这个功能需要付费
+
+
+
+#### 3、JVM 参数汇总查看命令
+
+
+
+-   java -XX:+PrintFlagsInitial 表示打印出所有参数选项的默认值
+-   java -XX:+PrintFlagsFinal 表示打印出所有参数选项在运行程序时生效的值
+
+
+
+### 3、JVM 调优案例一
+
+
+
+#### 1、调优案例背景
+
+
+
+大型电商系统后端现在一般都是拆分为多个子系统部署的，比如，商品系统，库存系统，订单系统，促销系统，会员系统等等、我们这里以比较核心的订单系统为例
+
+![image-20210622181148082](JVM.assets/image-20210622181148082.png)
+
+#### 2、调优参数分析
+
+
+
+如上所示：对于 8G 内存，我们一般分配 4G 内存给 JVM、正常的 JVM 参数配置如下：
+
+```java
+‐Xms3072M ‐Xmx3072M ‐Xss1M ‐XX:MetaspaceSize=256M ‐XX:MaxMetaspaceSize=256M ‐XX:SurvivorRatio=8
+```
+
+由于可能会由于 动态对象年龄判断机制导致频繁 Full GC、所以我们做一下改动
+
+```java
+‐Xms3072M ‐Xmx3072M ‐Xmn2048M ‐Xss1M ‐XX:MetaspaceSize=256M ‐XX:MaxMetaspaceSize=256M ‐XX:SurvivorRatio=8
+```
+
+增加了‐Xmn2048M 参数，调大了年轻代的大小、这样就降低了因为对象动态年龄判断原则导致的对象频繁进入老年代的问题，其实很多优化无非就是让短期存活的对象尽量都留在 Survivor 里，不要进入老年代，这样在 Minor GC 的时候这些对象都会被回收，不会进到老年代从而导致 Full GC
+
+![image-20210622181334176](JVM.assets/image-20210622181334176.png)
+
+
+
+对于对象年龄应该多少才能移动到老年代合适、本例中一次 Minor GC 要间隔二三十秒、大多数对象一般在几秒内就会变为垃圾、完全可以将默认的 15 岁改小一点比如改为 5，那么意味着对象要经过 5 次 Minor GC 才会进入老年代、整个时间也有一两分钟了，如果对象这么长时间都没被回收，完全可以认为这些对象是存活的比较长的对象、可以移动到老年代，而不是继续一直占用 Survivor 区空间
+
+对于大多的对象直接进入老年代（参数 -XX:PretenureSizeThreshold），这个一般可以结合自己系统和业务场景看看有没有什么大对象生成，预估下大对象的大小，一般来说设置为 1M 就差不多了，很少有超过 1M 的大对象，这些对象一般就是你系统初始化分配的缓存对象，比如大的缓存 List 、Map 之类的对象
+
+>   可以适当调正JVM参数如下
+
+```java
+‐Xms3072M ‐Xmx3072M ‐Xmn2048M ‐Xss1M ‐XX:MetaspaceSize=256M ‐XX:MaxMetaspaceSize=256M ‐XX:SurvivorRatio=8
+‐XX:MaxTenuringThreshold=5 ‐XX:PretenureSizeThreshold=1M
+```
+
+
+
+对于 JDK8 默认的垃圾回收器 
+
+-   -XX:+UseParallelGC (年轻代) 和 -XX:UseParallelOldGC （老年代）
+
+如果内存较大（超过 4 个 G，只是经验值），系统对停顿时间比较敏感我们可以使用 
+
+-   ParNew + CMS ( -XX:+UseParNewGC -XX:+UseConcMarkSweepGC ) 
+
+对于老年代 CMS 的参数如何设置我们可以思考下，首先我们想下当前这个系统有哪些对象可能会长期存活躲过 5 次以上 Minor GC 最终进入老年代。
+
+无非就是那些 Spring 容器里的 Bean，线程池对象，一些初始化缓存数据对象等，这些加起来充其量也就几十 MB、还有就是某次 Minor GC 完了之后还有超过一两百M的对象存活那么就会直接进入老年代，比如突然某一秒瞬间要处理五六百单，那么每秒生成的对象可能有一百多 M，再加上整个系统可能压力剧增，一个订单要好几秒才能处理完，下一秒可能又有很多订单过来
+
+我们可以估算下大概每隔五六分钟出现一次这样的情况，那么大概半小时到一小时之间就可能因为老年代满了触发一次 Full GC，Full GC 的触发条件还有我们之前说过的老年代空间分配担保机制，历次的 Minor GC 挪动到老年代的对象大小肯定是非常小的，所以几乎不会在 Minor GC 触发之前由于老年代空间分配担保失败而产生 Full GC，其实在半小时后发生 Full GC，这时候已经过了抢购的最高峰期，后续可能几小时才做一次 FullGC
+
+对于碎片整理，因为都是 1 小时或几小时才做一次 FullGC，是可以每做完一次就开始碎片整理，或者两到三次之后再做一次也行
+
+```java
+‐Xms3072M ‐Xmx3072M ‐Xmn2048M ‐Xss1M ‐XX:MetaspaceSize=256M ‐XX:MaxMetaspaceSize=256M ‐XX:SurvivorRatio=8
+‐XX:MaxTenuringThreshold=5 ‐XX:PretenureSizeThreshold=1M ‐XX:+UseParNewGC ‐XX:+UseConcMarkSweepGC
+‐XX:CMSInitiatingOccupancyFraction=92 ‐XX:+UseCMSCompactAtFullCollection ‐XX:CMSFullGCsBeforeCompaction=0
+```
+
+
+
+### 4、JVM 调优案例二
+
+
+
+#### 1、频繁 Full GC 导致卡顿 ?
+
+
+
+>   硬件配置和 GC 频率
+
+-   机器配置：2 核 4G
+-   JVM 内存大小：2G
+-   系统运行时间：7天
+-   期间发生的 Full GC 次数和耗时：500 多次，200 多秒
+-   期间发生的 Young GC 次数和耗时：1 万多次，500 多秒
+
+大致算下来每天会发生 70 多次 Full GC，平均每小时 3 次，每次 Full GC 在 400 毫秒左右、每天会发生 1000 多次Young GC，每分钟会发生 1 次，每次 Young GC 在 50 毫秒左右
+
+
+
+#### 2、JVM 参数设置如下
+
+
+
+```java
+-Xms1536M -Xmx1536M -Xmn512M -Xss256K -XX:SurvivorRatio=6  -XX:MetaspaceSize=256M -XX:MaxMetaspaceSize=256M 
+-XX:+UseParNewGC  -XX:+UseConcMarkSweepGC  -XX:CMSInitiatingOccupancyFraction=75 -XX:+UseCMSInitiatingOccupancyOnly
+```
+
+可以结合对象挪动到老年代那些规则推理下我们这个程序可能存在的一些问题、经过分析感觉可能会由于对象动态年龄判断机制导致 Full GC 较为频繁
+
+![image-20210622182201356](JVM.assets/image-20210622182201356.png)
+
+
+
+#### 3、测试 Full - GC 的代码
+
+
+
+-   主启动类
+
+```java
+@SpringBootApplication
+public class Application {
+	public static void main(String[] args) {
+		SpringApplication.run(Application.class, args);
+	}
+	@Bean
+	public RestTemplate restTemplate() {
+		return new RestTemplate();
+	}
+}
+```
+
+-   Controller 层
+
+```java
+@RestController
+public class IndexController {
+
+    @RequestMapping("/user/process")
+    public String processUserData() throws InterruptedException {
+        ArrayList<User> users = queryUsers();
+        for (User user: users) {
+            //TODO 业务处理
+            System.out.println("user:" + user.toString());
+        }
+        return "end";
+    }
+
+    /**
+     * 模拟批量查询用户场景
+     * @return
+     */
+    private ArrayList<User> queryUsers() {
+        ArrayList<User> users = new ArrayList<>();
+        for (int i = 0; i < 5000; i++) {
+            users.add(new User(i,"zhuge"));
+        }
+        return users;
+    }
+}
+```
+
+-   User 类
+
+```java
+public class User {
+	private int id;
+	private String name;
+	byte[] a = new byte[1024*100];
+
+	public User(){ }
+	public User(int id, String name) {
+		super();
+		this.id = id;
+		this.name = name;
+	}
+
+	public int getId() {
+		return id;
+	}
+	public void setId(int id) {
+		this.id = id;
+	}
+	public String getName() {
+		return name;
+	}
+	public void setName(String name) {
+		this.name = name;
+	}
+}
+```
+
+
+
+#### 4、用命令开始分析
+
+
+
+打印了 jstat 的 GC 的结果如下
+
+```java
+jstat -gc 13456 2000 10000
+```
+
+![image-20210622183828841](JVM.assets/image-20210622183828841.png)
+
+
+
+对于对象动态年龄判断机制导致的 Full GC 较为频繁可以先试着优化下 JVM 参数，把年轻代适当调大点
+
+```java
+-Xms1536M -Xmx1536M -Xmn1024M -Xss256K -XX:SurvivorRatio=6  -XX:MetaspaceSize=256M -XX:MaxMetaspaceSize=256M
+-XX:+UseParNewGC  -XX:+UseConcMarkSweepGC  -XX:CMSInitiatingOccupancyFraction=92 -XX:+UseCMSInitiatingOccupancyOnly
+```
+
+
+
+![image-20210622183907658](JVM.assets/image-20210622183907658.png)
+
+
+
+>   优化完发现没什么变化，**Full GC 的次数比 Minor GC 的次数还多了**
+
+![image-20210622183939177](JVM.assets/image-20210622183939177.png)
+
+
+
+我们可以推测下 Full GC 比 Minor GC 还多的原因有哪些？
+
+-   元空间不够导致的多余 Full GC
+-   显示调用 System.gc() 造成多余的Full GC，这种一般线上尽量通过 -XX:+DisableExplicitGC 参数禁用，如果加上了这个JVM 启动参数，那么代码中调用 System.gc() 没有任何效果
+-   老年代空间分配担保机制
+
+最快速度分析完这些我们推测的原因以及优化后，我们发现 Young GC 和 Full GC 依然很频繁了，而且看到有大量的对象频繁的被挪动到老年代，这种情况我们可以借助 Jmap 命令大概看下是什么对象
+
+![image-20210622184051021](JVM.assets/image-20210622184051021.png)
+
+
+
+查到了有大量 User 对象产生，这个可能是问题所在，但不确定，还必须找到对应的代码确认，如何去找对应的代码了？
+
+代码里全文搜索生成 User 对象的地方(适合只有少数几处地方的情况)
+
+如果生成 User 对象的地方太多，无法定位具体代码，我们可以同时分析下占用 CPU 较高的线程，一般有大量对象不断产生，对应的方法代码肯定会被频繁调用，占用的 CPU 必然较高
+
+>   可以用上面讲过的 jstack 或 jvisualvm 来定位 CPU 使用较高的代码，最终定位到的代码如下
+
+```java
+@RestController
+public class IndexController {
+
+    @RequestMapping("/user/process")
+    public String processUserData() throws InterruptedException {
+        ArrayList<User> users = queryUsers();
+
+        for (User user: users) {
+            //TODO 业务处理
+            System.out.println("user:" + user.toString());
+        }
+        return "end";
+    }
+
+    /**
+     * 模拟批量查询用户场景
+     * @return
+     */
+    private ArrayList<User> queryUsers() {
+        ArrayList<User> users = new ArrayList<>();
+        for (int i = 0; i < 5000; i++) {
+            users.add(new User(i,"zhuge"));
+        }
+        return users;
+    }
+}
+```
+
+
+
+同时，Java 的代码也是需要优化的，一次查询出 500M 的对象出来，明显不合适，要根据之前说的各种原则尽量优化到合适的值，尽量消除这种朝生夕死的对象导致的 Full GC
+
+
+
+### 5、内存泄漏是怎么回事
+
+
+
+#### 1、什么是内存泄漏
+
+
+
+-   内存溢出，申请不到足够的内存；
+-   内存泄露，无法释放已申请的内存；
+
+两者关系：内存泄露 → 剩余内存不足 → 后续申请不到足够内存 →内存溢出
+
+
+
+比如：一般电商架构可能会使用多级缓存架构，就是 Redis 加上 JVM 级缓存，大多数同学可能为了图方便对于 JVM 级缓存就简单使用一个 hashmap，于是不断往里面放缓存数据，但是很少考虑这个 map 的容量问题，结果这个缓存 map 越来越大，一直占用着老年代的很多空间，时间长了就会导致 Full GC 非常频繁，这就是一种内存泄漏，对于一些老旧数据没有及时清理导致一直占用着宝贵的内存资源，时间长了除了导致Full GC，还有可能导致OOM
+
+>   这种情况完全可以考虑采用一些成熟的 JVM 级缓存框架来解决，比如 ehcache 等自带一些 LRU 数据淘汰算法的框架来作为 JVM 级的缓存
+
+
+
+
 
