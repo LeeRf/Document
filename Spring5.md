@@ -347,6 +347,8 @@ public class MyTest0 {
 
 ## 4、IoC创建对象的方式
 
+
+
 1. 使用无参构造创建对象，默认。
 2. 使用有参构造（如下）
 
@@ -969,18 +971,18 @@ public class People {
 
 弹幕评论：
 
-Autowired是byType，@Autowired+@Qualifier = byType || byName
+Autowired 是 byType，@Autowired + @Qualifier = byType || byName
 
-Autowired是先byteType,如果唯一則注入，否则byName查找。resource是先byname,不符合再继续byType
+Autowired 是先 byteType, 如果唯一則注入，否则 byName 查找。resource 是先 byname, 不符合再继续 byType
 
 #### 区别：
 
 @Resource和@Autowired的区别：
 
 - 都是用来自动装配的，都可以放在属性字段上
-- @Autowired通过byType的方式实现，而且必须要求这个对象存在！【常用】
-- @Resource默认通过byname的方式实现，如果找不到名字，则通过byType实现！如果两个都找不到的情况下，就报错！【常用】
-- 执行顺序不同：@Autowired通过byType的方式实现。@Resource默认通过byname的方式实现
+- @Autowired 通过 byType的方式实现，而且必须要求这个对象存在！【常用】
+- @Resource 默认通过 byname 的方式实现，如果找不到名字，则通过 byType 实现！如果两个都找不到的情况下，就报错！【常用】
+- 执行顺序不同：@Autowired 通过 byType 的方式实现。@Resource 默认通过 byname 的方式实现
 
 ## 8、使用注解开发
 
