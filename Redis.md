@@ -1294,6 +1294,14 @@ Redis 列表是简单的字符串列表，按照插入顺序排序，你可以�
 
 
 
+>   List 常用组合命令
+>
+>   -   Stack (栈) = Lpush + Lpop
+>   -   Queue (队列）= Lpush + Rpop
+>   -   Blocking MQ (阻塞队列）= Lpush + Brpop
+
+
+
 #### 3、List 类型常用命令演示
 
 
@@ -1593,10 +1601,6 @@ OK
 
 
 
-
-
-
-
 #### 4、List 类型底层数据结构
 
 
@@ -1615,7 +1619,358 @@ Redis 将链表和 zipList 结构起来组成了 QuickList、也就是将多个 
 
 
 
+#### 1、Set 类型简介
 
+
+
+Redis Set 对外提供的功能于 List 类似，是一个列表的功能，特殊之处在于 Set 是可以**自动排重**的，当你需要存储一个列表数据，**又不希望重复数据时，Set 就是一个很好的选择**
+
+Redis 的 Set 是 String 类型的`无序集合，它底层其实是一个 value 为 null 的 hash 表`，所以添加、删除、查找的复杂度都是 O(1)，一个算法，随着数据的增加，执行时间的长短，如果是 O(1)，数据量增加，查找数据的时间不变
+
+
+
+#### 2、Set 类型常用命令
+
+
+
+-   `sadd <key><v1><v2>...`  将一个或多个 member 元素加入到集合 key 中，已经存在的元素将被忽略
+-   `smembers <key>`  取出该集合的所有值
+-   `sismember <key><value>` 判断集合 key 中是否含有 value 值，1 -> 有 、0 -> 无
+-   `scard <key>` 返回该集合的元素个数
+-   `srem <key><v1><v2>` 删除集合中的某个或多个元素
+-   `spop <key>` 随机从该集合中取出一个值
+-   `srandmember <key><num>` 随机从该集合中取出 n 个值，不会从集合中删除
+-   `smove <source><destination><value>` 把集合中的一个值从 原始集合移动到目标集合中
+
+-   `sinter <key1><key2>` 返回两个集合的**交集**元素 (相同的元素)
+-   `sinterstore destination <key1><key2>... ` 将**交集**结果存入新集合 destination 中
+
+-   `sunion <key1><key2>` 返回两个集合的**并集**元素 (合并集合所有元素，会去重)
+-   `sunionstore destination <key1><key2>...` 将**并集**结果存入新集合 destination 中
+
+-   `sdiff <key1><key2>`  返回两个集合中的**差集**元素 ( 以 key1 为准求差集)
+-   `sdiffstore destination <key1><key2>...` 将差集结果存入新集合 destination 中
+
+
+
+#### 3、Set 类型常用命令演示
+
+
+
+##### 1、sadd 将一个或多个元素加入集合 key 中
+
+
+
+>   `sadd <key><v1><v2>...`  将一个或多个 member 元素加入到集合 key 中，已经存在的元素将被忽略
+
+-   我们向 k5 中添加 5 个元素
+
+```jade
+127.0.0.1:6379> sadd k5 v1 v2 v3 v4 v5
+(integer) 5
+```
+
+-   向 k5 添加重复元素
+
+```jade
+127.0.0.1:6379> sadd k5 v1 v2
+(integer) 0
+```
+
+-   遍历 k5
+
+```jade
+127.0.0.1:6379> smembers k5
+1) "v4"
+2) "v1"
+3) "v3"
+4) "v2"
+5) "v5"
+```
+
+
+
+##### 2、smembers 取出该集合的所有值
+
+
+
+>   `smembers <key>`  取出该集合的所有值
+
+```jade
+127.0.0.1:6379> smembers k5
+1) "v4"
+2) "v1"
+3) "v3"
+4) "v2"
+5) "v5"
+```
+
+
+
+##### 3、sismember 判断集合 key 中是否含有 value 值
+
+
+
+>   `sismember <key><value>` 判断集合 key 中是否含有 value 值 (1 -> 有、0 -> 无 )
+
+-   判断一个的元素
+
+```jade
+127.0.0.1:6379> sismember k5 v2
+(integer) 1
+```
+
+-   判断一个不存在的元素
+
+```jade
+127.0.0.1:6379> sismember k5 v8
+(integer) 0
+```
+
+-   如果用在不是 set 类型的 key 上报错如下
+
+```asciiarmor
+127.0.0.1:6379> sismember k1 v8
+(error) WRONGTYPE Operation against a key holding the wrong kind of value
+```
+
+
+
+##### 4、scard  返回该集合的元素个数
+
+
+
+>   `scard <key>` 返回该集合的元素个数
+
+```jade
+127.0.0.1:6379> scard k5
+(integer) 5
+```
+
+
+
+##### 5、srem 删除集合中的某个或多个元素
+
+
+
+>   `srem <key><v1><v2>` 删除集合中的某个或多个元素
+
+-   从 k5 中删除 v5、v4
+
+```jade
+127.0.0.1:6379> srem k5 v5 v4
+(integer) 2
+```
+
+-   重新遍历 k5 元素
+
+```jade
+127.0.0.1:6379> smembers k5
+1) "v1"
+2) "v3"
+3) "v2"
+```
+
+
+
+##### 6、spop 随机从该集合中取出一个值
+
+
+
+>   `spop <key>` 随机从该集合中取出一个值
+
+```jade
+127.0.0.1:6379> spop k5
+"v2"
+
+127.0.0.1:6379> smembers k5
+1) "v1"
+2) "v3"
+```
+
+
+
+##### 7、srandmember 随机从集合中取出 n 个值，不会删除
+
+
+
+>   `srandmember <key><num>` 随机从该集合中取出 n 个值，不会从集合中删除
+
+```jade
+127.0.0.1:6379> srandmember k5 2
+1) "v1"
+2) "v3"
+```
+
+
+
+##### 8、smove  把集合中的一个值从 原始集合移动到目标集合中
+
+
+
+>   `smove <source><destination><value>` 把集合中的一个值从 原始集合移动到目标集合中
+
+-   我们创建一个新的 Set 集合、key 为 k6、Value 为 va1、va2、va3
+
+```jade
+127.0.0.1:6379> sadd k6 va1 va2 va3
+(integer) 3
+```
+
+-   将 k6 中的 va3 移动到 k5 集合中去
+
+```jade
+127.0.0.1:6379> smove k6 k5 va3
+(integer) 1
+```
+
+-   重新查看两个集合中的value
+
+```jade
+127.0.0.1:6379> smembers k6
+1) "va2"
+2) "va1"
+127.0.0.1:6379> smembers k5
+1) "v1"
+2) "va3"
+3) "v3"
+```
+
+
+
+##### 9、sinter 返回两个集合的**交集**元素
+
+
+
+>   `sinter <key1><key2>` 返回两个集合的**交集**元素 (相同的元素)
+
+-   我们向 k5 中添加交集元素、va2、va1
+
+```jade
+127.0.0.1:6379> sadd k5 va1 va2
+(integer) 2
+```
+
+
+
+现在 k5 和 k6 两个集合中的元素如下
+
+![image-20210702125007011](Redis.assets/image-20210702125007011.png)
+
+-   求交集
+
+```jade
+127.0.0.1:6379> sinter k5 k6
+1) "va2"
+2) "va1"
+```
+
+
+
+##### 10、sinterstore 将**交集**结果存入新集合中
+
+
+
+>   `sinterstore destination <key1><key2>... ` 将**交集**结果存入新集合 destination 中
+
+-   我们将 k5 k6 交集元素放入 keySinter 中
+
+```jade
+127.0.0.1:6379> sinterstore keySinter k5 k6
+(integer) 2
+
+127.0.0.1:6379> smembers keySinter
+1) "va1"
+2) "va2"
+```
+
+
+
+##### 11、sunion  返回两个集合的**并集**元素
+
+
+
+>   `sunion <key1><key2>` 返回两个集合的**并集**元素 (合并集合所有元素、会去重)
+
+![image-20210702125007011](Redis.assets/image-20210702125007011.png)
+
+```jade
+127.0.0.1:6379> sunion k5 k6
+1) "va2"
+2) "v1"
+3) "va3"
+4) "v3"
+5) "va1"
+```
+
+
+
+##### 12、sunionstore  将**并集**结果存入新集合中
+
+
+
+>   `sunionstore destination <key1><key2>...` 将**并集**结果存入新集合 destination 中
+
+-   我们将 k5 k6 中的并集元素存入 keySunion 中
+
+```jade
+127.0.0.1:6379> sunionstore keySunion k5 k6
+(integer) 5
+
+127.0.0.1:6379> smembers keySunion
+1) "va2"
+2) "v1"
+3) "va3"
+4) "v3"
+5) "va1"
+```
+
+
+
+##### 13、sdiff  返回两个集合中的**差集**元素
+
+
+
+>   `sdiff <key1><key2>`  返回两个集合中的**差集**元素 ( 以 key1 为准求差集)
+
+![image-20210702125007011](Redis.assets/image-20210702125007011.png)
+
+-   求差集元素
+
+```jade
+127.0.0.1:6379> sdiff k5 k6
+1) "v1"
+2) "v3"
+3) "va3"
+```
+
+
+
+##### 14、sdiffstore 将差集结果存入新集合中
+
+
+
+>   `sdiffstore destination <key1><key2>...` 将差集结果存入新集合 destination 中
+
+-   以 k5 为准，将 k5、k6 的差集存入 keySdiff 中
+
+```jade
+127.0.0.1:6379> sdiffstore keySdiff k5 k6
+(integer) 3
+
+127.0.0.1:6379> smembers keySdiff
+1) "v1"
+2) "v3"
+3) "va3"
+```
+
+
+
+#### 4、Set 类型底层数据结构
+
+
+
+Set 数据结构是 Dict 字典，字典使用哈希表实现的，Java 中的 HashSet 的内部实现使用的 HashMap，只不过所有的 value 都指向同一个对象，Redis 的 Set 结构也是一样的，它的内部也是使用 Hash 结构，所有的 value 都指向同一个内部值
 
 
 
@@ -1623,7 +1978,282 @@ Redis 将链表和 zipList 结构起来组成了 QuickList、也就是将多个 
 
 
 
+#### 1、Hash 类型简介
 
+
+
+##### 1、Hash 类型介绍
+
+
+
+Redis Hash 类型是一个键值对集合，它是一个 String 类型的 Field 和 Value 的映射表，Hash 特别适合用于存储对象，类似 Java 里面的 Map<String, Object>，用户 ID 为查找的 key，存储的 value 用户对象包含姓名，年龄，生日等信息，如果用普通的 key/value 结构来存储
+
+主要有以下两种存储方式：
+
+>   加入我们要存储以下对象 User { id  =  1, name  =  Lee, age  =  23 }
+
+
+
+##### 2、用 Hash 来存储对象的几种形式
+
+
+
+>   第一种方式：
+
+将用户 User 作为 Key，将数据转为 Json 存入到 value 中，整体存入
+
+-   缺点：如果要修改 age 的值，就需要将所有的字符串读取出来序列化为对象，然后修改对象年龄后，再将对象序列化为 JSON、之后再重新覆盖原来的值
+
+![image-20210702143924892](Redis.assets/image-20210702143924892.png)
+
+
+
+>   第二种方式：
+
+将 `User:[field]` 作为 key，然后 value 分别进行存储
+
+-   缺点：数据太分散了，结构也特别混乱，如果一个用户表有几十个字段，那么一个用户就要重复存几十次。那么如果有成百上千个对象，存取的次数呈指数级增长
+
+![image-20210702144048689](Redis.assets/image-20210702144048689.png)
+
+>   **第三种方式：用 Hash 来存储对象 (重点)**
+>
+>   -   `key --> user:id`
+>   -   `value --> field:value`
+
+
+
+所以，上面两种方式我们一般都是不用的，所以，这才有了 Hash 来存储对象。
+
+-   存储更加方便、修改也更加方便，讲清楚了这些，我们才能更好的使用 Redis 的 Hash 结构
+
+![image-20210702145736138](Redis.assets/image-20210702145736138.png)
+
+
+
+#### 2、Hash 类型常用命令
+
+
+
+-   `hset <key><field><value>`  给 key 集合中的 field 字段赋值 value
+-   `hget <key><field>`  获取 key 集合中 field 字段的 value 值
+-   `hmset <k1><f1><v1><f2><v2>`  批量设置 hash 的值
+-   `hexists <key><field>`  查看哈希表 key 中，给定的 field 字段是否存在
+-   `hkeys <key>`  遍历该指定 key 集合中的所有 field 字段
+-   `hvals <key>`  遍历该指定 key 集合中的所有 value 值
+-   `hincrby <key><field><increment>`  为哈希表 key 中 filed 字段的值加上增量 increment
+-   `hsetnx <key><field><value>`  当 field不存在时，将哈希表 key 中 field 的值设置为 value
+
+
+
+#### 3、Hash 类型常用命令演示
+
+
+
+##### 1、hset  给 key 集合中的 field 字段赋值 value
+
+
+
+>   `hset <key><field><value>`  给 key 集合中的 field 字段赋值 value
+
+-   我们添加用户 id 为 1000 的对象属性
+
+    -   key：`user:1000`
+
+    -   field：`id`
+
+    -   value：`1000`
+
+```jade
+127.0.0.1:6379> hset user:1000 id 1000
+(integer) 1
+127.0.0.1:6379> hset user:1000 name Lee
+(integer) 1
+127.0.0.1:6379> hset user:1000 age 24
+(integer) 1
+```
+
+-   遍历 user:1000 的所有 field 字段
+
+```jade
+127.0.0.1:6379> hkeys user:1000
+1) "id"
+2) "name"
+3) "age"
+```
+
+-   遍历 user:1000 的所有 value 值
+
+```jade
+127.0.0.1:6379> hvals user:1000
+1) "1000"
+2) "Lee"
+3) "24"
+```
+
+
+
+##### 2、hget  获取 key 集合中 field 字段的 value 值
+
+
+
+>   `hget <key><field>`  获取 key 集合中 field 字段的 value 值
+
+```jade
+127.0.0.1:6379> hget user:1000 id
+"1000"
+127.0.0.1:6379> hget user:1000 name
+"Lee"
+```
+
+
+
+##### 3、hmset 批量设置 hash 的值
+
+
+
+>   `hmset <k1><f1><v1><f2><v2>`  批量设置 hash 的值
+
+-   我们批量添加一个 user:1001 用户
+
+```jade
+127.0.0.1:6379> hmset user:1001 id 1001 name JJ age 28
+OK
+```
+
+新添加的用户信息如下所示：
+
+![image-20210702153808037](Redis.assets/image-20210702153808037.png)
+
+-   遍历 field 和 value
+
+```jade
+127.0.0.1:6379> hkeys user:1001
+1) "id"
+2) "name"
+3) "age"
+
+127.0.0.1:6379> hvals user:1001
+1) "1001"
+2) "JJ"
+3) "28"
+```
+
+
+
+##### 4、hexists 查看哈希表 key 中给定的 field 字段是否存在
+
+
+
+>   `hexists <key><field>`  查看哈希表 key 中，给定的 field 字段是否存在 ( 1 -> 存在、0 -> 不存在 )
+
+```jade
+127.0.0.1:6379> hexists user:1001 id
+(integer) 1
+127.0.0.1:6379> hexists user:1001 email
+(integer) 0
+```
+
+
+
+##### 5、hkeys 遍历该指定 key 集合中的所有 field 字段
+
+
+
+>   `hkeys <key>`  遍历该指定 key 集合中的所有 field 字段
+
+```jade
+127.0.0.1:6379> hkeys user:1001
+1) "id"
+2) "name"
+3) "age"
+```
+
+
+
+##### 6、hvals  遍历该指定 key 集合中的所有 value 值
+
+
+
+>   `hvals <key>`  遍历该指定 key 集合中的所有 value 值
+
+```jade
+127.0.0.1:6379> hvals user:1001
+1) "1001"
+2) "JJ"
+3) "28"
+```
+
+
+
+##### 7、hincrby 为哈希表 key 中的 filed 字段的值加上增量 increment
+
+
+
+>   `hincrby <key><field><increment>`  为哈希表 key 中的 filed 字段的值加上增量 increment
+
+-   对 id 为 1000 的用户年龄增加 10 岁
+
+```jade
+127.0.0.1:6379> hincrby user:1000 age 10
+(integer) 34
+```
+
+-   为 不是 num 类型的 field 做增量报以下错
+
+```asciiarmor
+127.0.0.1:6379> hincrby user:1000 name 10
+(error) ERR hash value is not an integer
+```
+
+
+
+##### 8、hsetnx 当 field不存在时，将哈希表 key 中 field 的值设置为 value
+
+
+
+>   `hsetnx <key><field><value>`  当 field不存在时，将哈希表 key 中 field 的值设置为 value
+
+```jade
+127.0.0.1:6379> hsetnx user:1000 age 24
+(integer) 0
+
+127.0.0.1:6379> hsetnx user:1000 email 520@qq.com
+(integer) 1
+```
+
+
+
+#### 4、Hash 类型底层数据结构
+
+
+
+Hash 类型对应的数据结构是两种
+
+-   zipList 压缩列表
+-   hashTable 哈希表
+
+![image-20210702151631049](Redis.assets/image-20210702151631049.png)
+
+field-value 长度较短且个数较少时，使用 ziplist、否则使用 hashTable
+
+>   zipList 的数据结构图解析
+
+zipList 包括 zip header、zip entry、zip end 三个模块
+
+![image-20210702151229345](Redis.assets/image-20210702151229345.png)
+
+-   zip entry 又由 prevlen、encoding&length、value 三部分组成
+
+    -   prevlen 主要是指前面 zipEntry 的长度
+
+    -   coding&length 是指编码字段长度和实际- 存储 value 的长- 度
+
+    -   value 是指真正的内容
+
+![image-20210702151418521](Redis.assets/image-20210702151418521.png)
+
+-   每个 key/value 存储结果中 key 用一个 zipEntry 存储，value 用一个 zipEntry 存储
 
 
 
@@ -1631,7 +2261,260 @@ Redis 将链表和 zipList 结构起来组成了 QuickList、也就是将多个 
 
 
 
+#### 1、ZSet 类型简介
 
+
+
+Redis 有序集合 zset 与普通集合 set 非常相似，是一个没有重复元素的字符串集合。不同之处是有序集合的每个成员都关联了一个评分 (score)、这个评分 (score) 被用来按照从最低分到最高分的方式排序集合中的成员。**集合的成员是唯一的，但是评分可以重复**
+
+因为元素是有序的，所以你也可以很快的根据评分 (score）或者次序 (position) 来获取一个范围的元素
+
+访问有序集合的中间元素也是非常快的,因此你能够使用有序集合作为一个没有重复成员的智能列表
+
+
+
+#### 2、ZSet 类型常用命令
+
+
+
+-   `zadd <key><s1><v1><score2><value2>...` 将一个或多个 member 元素及其 score 值加入 key 集合中
+-   `zrange <key><start><stop> [WithScores]` 返回有序集 key 中 下标在 start 和 stop 之间的元素
+    -   带 WithScores，可以让分数也一块返回到结果集
+
+-   `zRangeByScore <key> min max [WithScores][limit offset count]`
+    -   返回有序集 key 中，所有 score 值介于 min 和 max 之间（包括相等的）的成员
+    -   有序成员按 Score 值从小到大排序
+-   `zRevRangeByScore <key> max min [WithScores][limit offset count]`
+    -   同上、只不过改为从大到小排序
+
+-   `zincrby <key><increment><value>`  为元素的 Score 加上增量
+-   `zrem <key><value>` 删除该集合下，指定值的元素
+-   `zcount <key> min max `  统计该集合，分数区间内的元素个数
+-   `zrank <key><value>` 返回该值在集合中的排名，从 0 开始
+
+
+
+#### 3、ZSet 类型常用命令演示
+
+
+
+##### 1、zadd 将一个或多个元素及其 score 值加入 key 集合中
+
+
+
+>   `zadd <key><s1><v1><score2><value2>...` 将一个或多个 member 元素及其 score 值加入 key 集合中
+
+-   我们做一个编程语言的排行榜
+
+```jade
+127.0.0.1:6379> zadd RankingList 100 C# 200 Java 900 C++ 1000 C
+(integer) 4
+```
+
+-   遍历 RankingList
+
+```jade
+127.0.0.1:6379> zrange RankingList 0 10
+1) "C#"
+2) "Java"
+3) "C++"
+4) "C"
+```
+
+
+
+##### 2、zrange 返回 key 中下标在 start 和 stop 之间的元素
+
+
+
+>   `zrange <key><start><stop> [WithScores]` 返回有序集 key 中 下标在 start 和 stop 之间的元素
+>
+>   -   带 WithScores，可以让分数也一块返回到结果集
+
+```jade
+127.0.0.1:6379> zrange RankingList 0 10 WithScores
+1) "C#"
+2) "100"
+3) "Java"
+4) "200"
+5) "C++"
+6) "900"
+7) "C"
+8) "1000"
+```
+
+
+
+##### 3、zRangeByScore 命令详解如下
+
+
+
+>   `zRangeByScore <key> min max [WithScores][limit offset count]`
+>
+>   -   返回有序集 key 中，所有 score 值介于 min 和 max 之间（包括相等的）的成员
+>   -   有序成员按 Score 值从小到大排序
+
+-   返回 RankingList 中 Score 在 100 ~ 500 之间的元素
+
+```jade
+127.0.0.1:6379> zrangebyscore RankingList 100 500 WithScores
+1) "C#"
+2) "100"
+3) "Java"
+4) "200"
+```
+
+
+
+##### 4、zRevRangeByScore 命令详解如下
+
+
+
+>   `zRevRangeByScore <key> max min [WithScores][limit offset count]`
+>
+>   -   同上、只不过改为从大到小排序
+
+```jade
+127.0.0.1:6379> zrevrangebyscore RankingList 500 100 WithScores
+1) "Java"
+2) "200"
+3) "C#"
+4) "100"
+```
+
+
+
+##### 5、zincrby  为元素的 Score 加上增量
+
+
+
+>   `zincrby <key><increment><value>`  为元素的 Score 加上增量
+
+```jade
+127.0.0.1:6379> zincrby RankingList 50 C#
+"150"
+```
+
+
+
+##### 6、zrem 删除该集合下，指定值的元素
+
+
+
+>   `zrem <key><value>` 删除该集合下，指定值的元素
+
+```jade
+127.0.0.1:6379> zrem RankingList C
+(integer) 1
+```
+
+
+
+##### 7、zcount 统计该集合，分数区间内的元素个数
+
+
+
+>   `zcount <key> min max `  统计该集合，分数区间内的元素个数
+
+```jade
+127.0.0.1:6379> zrange RankingList 0 10
+1) "C#"
+2) "Java"
+3) "C++"
+
+127.0.0.1:6379> zcount RankingList 100 500
+(integer) 2
+```
+
+
+
+##### 8、zrank 返回该值在集合中的排名，从 0 开始
+
+
+
+>   `zrank <key><value>` 返回该值在集合中的排名，从 0 开始
+
+```jade
+127.0.0.1:6379> zrange RankingList 0 100
+1) "C#"
+2) "Java"
+3) "C++"
+
+127.0.0.1:6379> zrank RankingList Java
+(integer) 1
+```
+
+
+
+#### 4、ZSet 类型底层数据结构
+
+
+
+SortedSet(zset) 是 Redis 提供的一个非常特别的数据结构，一方面它等价于 Java 的数据结构 Map<String，Double>，可以给每一个元素 value 赋予一个权重 score，另一方面它又类似于 TreeSet，内部的元素会按照权重 score 进行排序，可以得到每个元素的名次，还可以通过 score 的范围来获取元素的列表
+
+zetSet 底层使用了两个数据结构
+
+
+
+##### 1、hash 数据结构
+
+
+
+>   hash 的作用就是关联元素 value 和权重 score，保障元素 value 的唯—性，可以通过元素 value 找到相应的 score 值
+
+![image-20210702170105688](Redis.assets/image-20210702170105688.png)
+
+
+
+##### 2、跳跃表结构
+
+
+
+>   跳跃表的目的在于给元素 value 排序，根据 score 的范围获取元素列表
+
+有序集合在生活中比较常见，例如根据成绩对学生排名，根据得分对玩家排名等。对于有序集合的底层实现，可以用数组、平衡树、链表等。数组不便元素的插入，删除。平衡树或红黑树虽然效率高但结构复杂；链表查询需要遍历所有效率低。Redis 采用的是跳跃表。**跳跃装效率堪比红黑树，实现远比红黑树简单**
+
+**跳表(SkipList)：增加了向前指针的链表叫做指针。跳表全称叫做跳跃表，简称跳表。跳表是一个随机化的数据结构，实质是一种可以进行二分查找的有序链表。跳表在原有的有序链表上增加了多级索引，通过索引来实现快速查询。跳表不仅能提高搜索性能，同时也可以提高插入和删除操作的性能**
+
+
+
+跳跃表的性质：
+
+-   由很多层结构组成，level 是通过一定的概率随机产生的
+-   每一层都是一个有序的链表，默认是升序
+-   最底层 (Level 1) 的链表包含所有元素
+-   如果一个元素出现在 Level i 的链表中，则它在 Level i 之下的链表也都会出现
+-   每个节点包含两个指针，一个指向同一链表中的下一个元素，一个指向下面一层的元素
+
+
+
+>   有序链表和跳跃表对比
+
+**有序链表**
+
+-   要查找值为 51 的元素、需要从第一个元素**开始依次查找**，比较才能找到，共需要 6 次比较
+
+![image-20210702164321016](Redis.assets/image-20210702164321016.png)
+
+
+
+**跳跃表**
+
+-   从二级索引开始
+
+    -   1 节点比 51 节点小，向后比较
+
+    -   21 节点比 51 节点小，继续向后比较，可是后面是 Null、所以从 21 节点向下到一级索引
+
+-   一级索引的比较
+
+    -   41 节点 比 51 节点小，所以继续向后查找，61 节点比 51 节点大，所以从 41 向下查找
+
+-   原始链表的对比
+
+    -   在原始链表中，51 节点被找到、共查找 4 次
+
+![image-20210702164333556](Redis.assets/image-20210702164333556.png)
 
 
 
@@ -1643,7 +2526,27 @@ Redis 将链表和 zipList 结构起来组成了 QuickList、也就是将多个 
 
 
 
+#### 1、Bitmaps 类型简介
 
+
+
+**Bitmap 位图**：现代计算机用二进制 (位) 作为信息的基础单位，1 个字节等于 8 位，例如 “abc" 字符串是由 3 个字节组成，但实际在计算机存储时将其用二进制表示，“abc” 分别对应的 ASCII 码分别是 97、98、99，对应的二进制分别是 01100001、01100010 和 01100011。如下图
+
+
+
+![image-20210702201058203](Redis.assets/image-20210702201058203.png)
+
+
+
+#### 2、Bitmaps 类型常用命令
+
+
+
+#### 3、Bitmaps 类型常用命令演示
+
+
+
+#### 4、Bitmaps 类型底层数据结构
 
 
 
@@ -1651,7 +2554,19 @@ Redis 将链表和 zipList 结构起来组成了 QuickList、也就是将多个 
 
 
 
+#### 1、HyperLogLog 类型简介
 
+
+
+#### 2、HyperLogLog 类型常用命令
+
+
+
+#### 3、HyperLogLog 类型常用命令演示
+
+
+
+#### 4、HyperLogLog 类型底层数据结构
 
 
 
@@ -1659,17 +2574,940 @@ Redis 将链表和 zipList 结构起来组成了 QuickList、也就是将多个 
 
 
 
+#### 1、Geospatial 类型简介
+
+
+
+#### 2、Geospatial 类型常用命令
+
+
+
+#### 3、Geospatial  类型常用命令演示
+
+
+
+#### 4、Geospatial 类型底层数据结构
+
+
+
+## 6、Redis 配置文件和 Jedis
+
+
+
+### 1、redis.conf 配置文件详解
+
+
+
+#### 1、Units 单位
+
+
+
+-   配置内存大小时单位、开头定义了一些基本的度量单位，只支持 bytes、不支持 bit、大小写不敏感
+
+```shell
+# Note on units: when memory size is needed, it is possible to specify
+# it in the usual form of 1k 5GB 4M and so forth:
+#
+# 1k => 1000 bytes
+# 1kb => 1024 bytes
+# 1m => 1000000 bytes
+# 1mb => 1024*1024 bytes
+# 1g => 1000000000 bytes
+# 1gb => 1024*1024*1024 bytes
+#
+# units are case insensitive so 1GB 1Gb 1gB are all the same.
+```
+
+
+
+#### 2、INCLUDES 包含多个配置文件
+
+
+
+-   例如你配置了多个配置文件可以进行关联
+-   `include /path/to/local.conf`
+-   `include /path/to/other.conf`
+
+```shell
+################################## INCLUDES ###################################
+
+# Include one or more other config files here.  This is useful if you
+# have a standard template that goes to all Redis servers but also need
+# to customize a few per-server settings.  Include files can include
+# other files, so use this wisely.
+#
+# Note that option "include" won't be rewritten by command "CONFIG REWRITE"
+# from admin or Redis Sentinel. Since Redis always uses the last processed
+# line as value of a configuration directive, you'd better put includes
+# at the beginning of this file to avoid overwriting config change at runtime.
+#
+# If instead you are interested in using includes to override configuration
+# options, it is better to use include as the last line.
+#
+# include /path/to/local.conf
+# include /path/to/other.conf
+```
+
+
+
+#### 3、MODULES 启动时加载的模块
+
+
+
+>   启动时加载模块、如果服务器无法加载模块 、它将中止。 可以使用多个 loadmodule 指令
+
+```shell
+################################## MODULES #####################################
+
+# Load modules at startup. If the server is not able to load modules
+# it will abort. It is possible to use multiple loadmodule directives.
+#
+# loadmodule /path/to/my_module.so
+# loadmodule /path/to/other_module.so
+```
+
+
+
+#### 4、NETWORK 访问 Redis 网络配置
+
+
+
+##### 1、bind 参数介绍
+
+
+
+-   默认情况 bind=127.0.0.1 只能接受本机的访问请求，不写的情况下，无限制接收任何 ip 地址的访问
+-   生产环境下肯定要写你应用服务器的地址，服务器是需要远程访问的
+-   **如果开启了 protected-mode，那么在没有设定 bing ip 且没有设密码的情况下， Redis 只允许接收本机的响应**
+
+
+
+##### 2、NETWORK 模块所有可配置参数
+
+
+
+```shell
+bind 127.0.0.1 -::1 # 配置允许访问的 ip 地址、如果不写、无限制接收任何 ip 地址的访问
+protected-mode yes  # 开启 Redis 保护模式，也就是只能通过本机访问
+port 6379           # 默认端口号配置
+
+# 设置 tcp 的 backlog、其实就是一个连接队列
+# backlog 队列总和 = 未完成三次握手队列 + 已完成三次握手队列
+tcp-backlog 511
+
+timeout 0         # 表示一个客户端空闲未操作多少秒自动关闭连接、默认 0 (永不关闭)
+tcp-keepalive 300 # 表示客户端与 Redis 的心跳连接：默认300秒检测一次，如果未检测到心跳则断开连接
+```
+
+-   tcp-backlog：在高并发情况下、你需要一个高 backlog 值来避免慢客户端连接问题，注意 Linux 内核会将该值减小到 `/proc/sys/net/core/somaxconn` 的值 (128)。所以需要确认增大该值 和 `/proc/sys/net/ipv4/tcp_max_syn_backlog` (128) 两个值来达到想要的效果
+
+
+
+##### 3、NETWORK 原配置如下
+
+
+
+```shell
+################################## NETWORK #####################################
+
+# By default, if no "bind" configuration directive is specified, Redis listens
+# for connections from all available network interfaces on the host machine.
+# It is possible to listen to just one or multiple selected interfaces using
+# the "bind" configuration directive, followed by one or more IP addresses.
+# Each address can be prefixed by "-", which means that redis will not fail to
+# start if the address is not available. Being not available only refers to
+# addresses that does not correspond to any network interfece. Addresses that
+# are already in use will always fail, and unsupported protocols will always BE
+# silently skipped.
+#
+# Examples:
+#
+# bind 192.168.1.100 10.0.0.1     # listens on two specific IPv4 addresses
+# bind 127.0.0.1 ::1              # listens on loopback IPv4 and IPv6
+# bind * -::*                     # like the default, all available interfaces
+#
+# ~~~ WARNING ~~~ If the computer running Redis is directly exposed to the
+# internet, binding to all the interfaces is dangerous and will expose the
+# instance to everybody on the internet. So by default we uncomment the
+# following bind directive, that will force Redis to listen only on the
+# IPv4 and IPv6 (if available) loopback interface addresses (this means Redis
+# will only be able to accept client connections from the same host that it is
+# running on).
+#
+# IF YOU ARE SURE YOU WANT YOUR INSTANCE TO LISTEN TO ALL THE INTERFACES
+# JUST COMMENT OUT THE FOLLOWING LINE.
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+bind 127.0.0.1 -::1
+
+# Protected mode is a layer of security protection, in order to avoid that
+# Redis instances left open on the internet are accessed and exploited.
+#
+# When protected mode is on and if:
+#
+# 1) The server is not binding explicitly to a set of addresses using the
+#    "bind" directive.
+# 2) No password is configured.
+#
+# The server only accepts connections from clients connecting from the
+# IPv4 and IPv6 loopback addresses 127.0.0.1 and ::1, and from Unix domain
+# sockets.
+#
+# By default protected mode is enabled. You should disable it only if
+# you are sure you want clients from other hosts to connect to Redis
+# even if no authentication is configured, nor a specific set of interfaces
+# are explicitly listed using the "bind" directive.
+protected-mode yes
+
+# Accept connections on the specified port, default is 6379 (IANA #815344).
+# If port 0 is specified Redis will not listen on a TCP socket.
+port 6379
+
+# TCP listen() backlog.
+#
+# In high requests-per-second environments you need a high backlog in order
+# to avoid slow clients connection issues. Note that the Linux kernel
+# will silently truncate it to the value of /proc/sys/net/core/somaxconn so
+# make sure to raise both the value of somaxconn and tcp_max_syn_backlog
+# in order to get the desired effect.
+tcp-backlog 511
+
+# Unix socket.
+#
+# Specify the path for the Unix socket that will be used to listen for
+# incoming connections. There is no default, so Redis will not listen
+# on a unix socket when not specified.
+#
+# unixsocket /run/redis.sock
+# unixsocketperm 700
+
+# Close the connection after a client is idle for N seconds (0 to disable)
+timeout 0
+
+# TCP keepalive.
+#
+# If non-zero, use SO_KEEPALIVE to send TCP ACKs to clients in absence
+# of communication. This is useful for two reasons:
+#
+# 1) Detect dead peers.
+# 2) Force network equipment in the middle to consider the connection to be
+#    alive.
+#
+# On Linux, the specified value (in seconds) is the period used to send ACKs.
+# Note that to close the connection the double of the time is needed.
+# On other kernels the period depends on the kernel configuration.
+#
+# A reasonable value for this option is 300 seconds, which is the new
+# Redis default starting with Redis 3.2.1.
+tcp-keepalive 300
+```
+
+
+
+#### 5、GENERAL 进程日志库数量等配置
+
+
+
+##### 1、GENERAL 模块所有可配置参数
+
+
+
+```shell
+daemonize no     # Redis 的启动方式：yes 前台启动、no 后台启动
+
+# 存放 Redis 的进程号的位置、每个实例都会产生一个不同的 pid 文件
+pidfile /var/run/redis_6379.pid
+
+# Redis 中的日志级别(四种)
+# debug：大量的信息、对开发/测试很有帮助、类似 Java 中的 Debug
+# verbose：输出一些有用关键的信息、类似 Java 中的 Info
+# notice：(默认)生产环境上使用的级别
+# warning：只记录 关键的/非常重要的 日志信息
+loglevel notice
+
+logfile ""    # 设置 Redis 日志输出路径、默认为空
+databases 16  # Redis 默认有 16 个库
+
+# 以下跟修改 Redis 进程信息相关
+always-show-logo no
+set-proc-title yes
+proc-title-template "{title} {listen-addr} {server-mode}"
+```
+
+
+
+##### 2、GENERAL 原配置如下
+
+
+
+```shell
+################################# GENERAL #####################################
+
+# By default Redis does not run as a daemon. Use 'yes' if you need it.
+# Note that Redis will write a pid file in /var/run/redis.pid when daemonized.
+# When Redis is supervised by upstart or systemd, this parameter has no impact.
+daemonize no
+
+# If you run Redis from upstart or systemd, Redis can interact with your
+# supervision tree. Options:
+#   supervised no      - no supervision interaction
+#   supervised upstart - signal upstart by putting Redis into SIGSTOP mode
+#                        requires "expect stop" in your upstart job config
+#   supervised systemd - signal systemd by writing READY=1 to $NOTIFY_SOCKET
+#                        on startup, and updating Redis status on a regular
+#                        basis.
+#   supervised auto    - detect upstart or systemd method based on
+#                        UPSTART_JOB or NOTIFY_SOCKET environment variables
+# Note: these supervision methods only signal "process is ready."
+#       They do not enable continuous pings back to your supervisor.
+#
+# The default is "no". To run under upstart/systemd, you can simply uncomment
+# the line below:
+#
+# supervised auto
+
+# If a pid file is specified, Redis writes it where specified at startup
+# and removes it at exit.
+#
+# When the server runs non daemonized, no pid file is created if none is
+# specified in the configuration. When the server is daemonized, the pid file
+# is used even if not specified, defaulting to "/var/run/redis.pid".
+#
+# Creating a pid file is best effort: if Redis is not able to create it
+# nothing bad happens, the server will start and run normally.
+#
+# Note that on modern Linux systems "/run/redis.pid" is more conforming
+# and should be used instead.
+pidfile /var/run/redis_6379.pid
+
+# Specify the server verbosity level.
+# This can be one of:
+# debug (a lot of information, useful for development/testing)
+# verbose (many rarely useful info, but not a mess like the debug level)
+# notice (moderately verbose, what you want in production probably)
+# warning (only very important / critical messages are logged)
+loglevel notice
+
+# Specify the log file name. Also the empty string can be used to force
+# Redis to log on the standard output. Note that if you use standard
+# output for logging but daemonize, logs will be sent to /dev/null
+logfile ""
+
+# To enable logging to the system logger, just set 'syslog-enabled' to yes,
+# and optionally update the other syslog parameters to suit your needs.
+# syslog-enabled no
+
+# Specify the syslog identity.
+# syslog-ident redis
+
+# Specify the syslog facility. Must be USER or between LOCAL0-LOCAL7.
+# syslog-facility local0
+
+# To disable the built in crash log, which will possibly produce cleaner core
+# dumps when they are needed, uncomment the following:
+#
+# crash-log-enabled no
+
+# To disable the fast memory check that's run as part of the crash log, which
+# will possibly let redis terminate sooner, uncomment the following:
+#
+# crash-memcheck-enabled no
+
+# Set the number of databases. The default database is DB 0, you can select
+# a different one on a per-connection basis using SELECT <dbid> where
+# dbid is a number between 0 and 'databases'-1
+databases 16
+
+# By default Redis shows an ASCII art logo only when started to log to the
+# standard output and if the standard output is a TTY and syslog logging is
+# disabled. Basically this means that normally a logo is displayed only in
+# interactive sessions.
+#
+# However it is possible to force the pre-4.0 behavior and always show a
+# ASCII art logo in startup logs by setting the following option to yes.
+always-show-logo no
+
+# By default, Redis modifies the process title (as seen in 'top' and 'ps') to
+# provide some runtime information. It is possible to disable this and leave
+# the process name as executed by setting the following to no.
+set-proc-title yes
+
+# When changing the process title, Redis uses the following template to construct
+# the modified title.
+#
+# Template variables are specified in curly brackets. The following variables are
+# supported:
+#
+# {title}           Name of process as executed if parent, or type of child process.
+# {listen-addr}     Bind address or '*' followed by TCP or TLS port listening on, or
+#                   Unix socket if only that's available.
+# {server-mode}     Special mode, i.e. "[sentinel]" or "[cluster]".
+# {port}            TCP port listening on, or 0.
+# {tls-port}        TLS port listening on, or 0.
+# {unixsocket}      Unix domain socket listening on, or "".
+# {config-file}     Name of configuration file used.
+#
+proc-title-template "{title} {listen-addr} {server-mode}"
+```
+
+
+
+#### 6、SECURITY 安全模块配置
+
+
+
+##### 1、SECURITY  模块所有可配置参数
+
+
+
+```shell
+# 访问密码的查看、设置和取消
+# 在命令中设置密码、只是临时的, 重启 Redis 服务器后、密码就还原了
+# 永久设置、需要在配置文件中进行
+requirepass 123456
+
+
+# ACL LOG 日志相关
+acllog-max-len 128
+```
+
+
+
+##### 2、配置 Redis 密码的两种方式
+
+
+
+-   第一种：在配置文件中配置 requirepass
+
+```shell
+requirepass 123456
+```
+
+-   第二种：在命令界面设置密码：
+-   如果没有在配置文件中配置 requirepass，redis 重启后密码将失效
+
+```java
+// 获取下当前配置
+127.0.0.1:6379> config get requirepass
+1) "requirepass"
+
+// 设置当前密码
+127.0.0.1:6379> config set requirepass 123456
+```
+
+
+
+##### 3、登录有密码的 Redis
+
+
+
+-   第一种方式：在登陆的时候输入密码
+
+```jade
+[root@lee redis-6.2.4]# redis-cli -p 6379 -a 123456
+```
+
+-   第二种方式：先登录后验证
+
+```jade
+[root@lee redis-6.2.4]# redis-cli -p 6379
+redis 127.0.0.1:6379> auth 123456
+```
+
+
+
+##### 4、SECURITY 原配置如下
+
+
+
+```shell
+################################## SECURITY ###################################
+
+# Warning: since Redis is pretty fast, an outside user can try up to
+# 1 million passwords per second against a modern box. This means that you
+# should use very strong passwords, otherwise they will be very easy to break.
+# Note that because the password is really a shared secret between the client
+# and the server, and should not be memorized by any human, the password
+# can be easily a long string from /dev/urandom or whatever, so by using a
+# long and unguessable password no brute force attack will be possible.
+
+# Redis ACL users are defined in the following format:
+#
+#   user <username> ... acl rules ...
+#
+# For example:
+#
+#   user worker +@list +@connection ~jobs:* on >ffa9203c493aa99
+#
+# The special username "default" is used for new connections. If this user
+# has the "nopass" rule, then new connections will be immediately authenticated
+# as the "default" user without the need of any password provided via the
+# AUTH command. Otherwise if the "default" user is not flagged with "nopass"
+# the connections will start in not authenticated state, and will require
+# AUTH (or the HELLO command AUTH option) in order to be authenticated and
+# start to work.
+#
+# The ACL rules that describe what a user can do are the following:
+#
+#  on           Enable the user: it is possible to authenticate as this user.
+#  off          Disable the user: it's no longer possible to authenticate
+#               with this user, however the already authenticated connections
+#               will still work.
+#  skip-sanitize-payload    RESTORE dump-payload sanitation is skipped.
+#  sanitize-payload         RESTORE dump-payload is sanitized (default).
+#  +<command>   Allow the execution of that command
+#  -<command>   Disallow the execution of that command
+#  +@<category> Allow the execution of all the commands in such category
+#               with valid categories are like @admin, @set, @sortedset, ...
+#               and so forth, see the full list in the server.c file where
+#               the Redis command table is described and defined.
+#               The special category @all means all the commands, but currently
+#               present in the server, and that will be loaded in the future
+#               via modules.
+#  +<command>|subcommand    Allow a specific subcommand of an otherwise
+#                           disabled command. Note that this form is not
+#                           allowed as negative like -DEBUG|SEGFAULT, but
+#                           only additive starting with "+".
+#  allcommands  Alias for +@all. Note that it implies the ability to execute
+#               all the future commands loaded via the modules system.
+#  nocommands   Alias for -@all.
+#  ~<pattern>   Add a pattern of keys that can be mentioned as part of
+#               commands. For instance ~* allows all the keys. The pattern
+#               is a glob-style pattern like the one of KEYS.
+#               It is possible to specify multiple patterns.
+#  allkeys      Alias for ~*
+#  resetkeys    Flush the list of allowed keys patterns.
+#  &<pattern>   Add a glob-style pattern of Pub/Sub channels that can be
+#               accessed by the user. It is possible to specify multiple channel
+#               patterns.
+#  allchannels  Alias for &*
+#  resetchannels            Flush the list of allowed channel patterns.
+#  ><password>  Add this password to the list of valid password for the user.
+#               For example >mypass will add "mypass" to the list.
+#               This directive clears the "nopass" flag (see later).
+#  <<password>  Remove this password from the list of valid passwords.
+#  nopass       All the set passwords of the user are removed, and the user
+#               is flagged as requiring no password: it means that every
+#               password will work against this user. If this directive is
+#               used for the default user, every new connection will be
+#               immediately authenticated with the default user without
+#               any explicit AUTH command required. Note that the "resetpass"
+#               directive will clear this condition.
+#  resetpass    Flush the list of allowed passwords. Moreover removes the
+#               "nopass" status. After "resetpass" the user has no associated
+#               passwords and there is no way to authenticate without adding
+#               some password (or setting it as "nopass" later).
+#  reset        Performs the following actions: resetpass, resetkeys, off,
+#               -@all. The user returns to the same state it has immediately
+#               after its creation.
+#
+# ACL rules can be specified in any order: for instance you can start with
+# passwords, then flags, or key patterns. However note that the additive
+# and subtractive rules will CHANGE MEANING depending on the ordering.
+# For instance see the following example:
+#
+#   user alice on +@all -DEBUG ~* >somepassword
+#
+# This will allow "alice" to use all the commands with the exception of the
+# DEBUG command, since +@all added all the commands to the set of the commands
+# alice can use, and later DEBUG was removed. However if we invert the order
+# of two ACL rules the result will be different:
+#
+#   user alice on -DEBUG +@all ~* >somepassword
+#
+# Now DEBUG was removed when alice had yet no commands in the set of allowed
+# commands, later all the commands are added, so the user will be able to
+# execute everything.
+#
+# Basically ACL rules are processed left-to-right.
+#
+# For more information about ACL configuration please refer to
+# the Redis web site at https://redis.io/topics/acl
+
+# ACL LOG
+#
+# The ACL Log tracks failed commands and authentication events associated
+# with ACLs. The ACL Log is useful to troubleshoot failed commands blocked 
+# by ACLs. The ACL Log is stored in memory. You can reclaim memory with 
+# ACL LOG RESET. Define the maximum entry length of the ACL Log below.
+acllog-max-len 128
+
+# Using an external ACL file
+#
+# Instead of configuring users here in this file, it is possible to use
+# a stand-alone file just listing users. The two methods cannot be mixed:
+# if you configure users here and at the same time you activate the external
+# ACL file, the server will refuse to start.
+#
+# The format of the external ACL user file is exactly the same as the
+# format that is used inside redis.conf to describe users.
+#
+# aclfile /etc/redis/users.acl
+
+# IMPORTANT NOTE: starting with Redis 6 "requirepass" is just a compatibility
+# layer on top of the new ACL system. The option effect will be just setting
+# the password for the default user. Clients will still authenticate using
+# AUTH <password> as usually, or more explicitly with AUTH default <password>
+# if they follow the new protocol: both will work.
+#
+# The requirepass is not compatable with aclfile option and the ACL LOAD
+# command, these will cause requirepass to be ignored.
+#
+# requirepass foobared
+
+# New users are initialized with restrictive permissions by default, via the
+# equivalent of this ACL rule 'off resetkeys -@all'. Starting with Redis 6.2, it
+# is possible to manage access to Pub/Sub channels with ACL rules as well. The
+# default Pub/Sub channels permission if new users is controlled by the 
+# acl-pubsub-default configuration directive, which accepts one of these values:
+#
+# allchannels: grants access to all Pub/Sub channels
+# resetchannels: revokes access to all Pub/Sub channels
+#
+# To ensure backward compatibility while upgrading Redis 6.0, acl-pubsub-default
+# defaults to the 'allchannels' permission.
+#
+# Future compatibility note: it is very likely that in a future version of Redis
+# the directive's default of 'allchannels' will be changed to 'resetchannels' in
+# order to provide better out-of-the-box Pub/Sub security. Therefore, it is
+# recommended that you explicitly define Pub/Sub permissions for all users
+# rather then rely on implicit default values. Once you've set explicit
+# Pub/Sub for all existing users, you should uncomment the following line.
+#
+# acl-pubsub-default resetchannels
+
+# Command renaming (DEPRECATED).
+#
+# ------------------------------------------------------------------------
+# WARNING: avoid using this option if possible. Instead use ACLs to remove
+# commands from the default user, and put them only in some admin user you
+# create for administrative purposes.
+# ------------------------------------------------------------------------
+#
+# It is possible to change the name of dangerous commands in a shared
+# environment. For instance the CONFIG command may be renamed into something
+# hard to guess so that it will still be available for internal-use tools
+# but not available for general clients.
+#
+# Example:
+#
+# rename-command CONFIG b840fc02d524045429941cc15f59e41cb7be6c52
+#
+# It is also possible to completely kill a command by renaming it into
+# an empty string:
+#
+# rename-command CONFIG ""
+#
+# Please note that changing the name of commands that are logged into the
+# AOF file or transmitted to replicas may cause problems.
+```
+
+
+
+#### 7、CLIENTS (原 LIMITS) 连接数配置
+
+
+
+##### 1、CLIENTS 模块所有可用配置
+
+
+
+```shell
+# 设置 Redis 同时可以与多少个客户端进行连接、默认为 10000 个客户端
+# 如果达到了此限制、Redis 则会拒绝新的连接请求
+# 并且向这些连接请求方发出 'max number of clients reached' 以作回应
+maxclients 10000
+```
+
+
+
+##### 2、CLIENTS 原配置如下
+
+
+
+```shell
+################################### CLIENTS ####################################
+
+# Set the max number of connected clients at the same time. By default
+# this limit is set to 10000 clients, however if the Redis server is not
+# able to configure the process file limit to allow for the specified limit
+# the max number of allowed clients is set to the current file limit
+# minus 32 (as Redis reserves a few file descriptors for internal uses).
+#
+# Once the limit is reached Redis will close all the new connections sending
+# an error 'max number of clients reached'.
+#
+# IMPORTANT: When Redis Cluster is used, the max number of connections is also
+# shared with the cluster bus: every node in the cluster will use two
+# connections, one incoming and another outgoing. It is important to size the
+# limit accordingly in case of very large clusters.
+#
+# maxclients 10000
+```
+
+
+
+#### 8、MEMORY MANAGEMENT 内存管理配置
+
+
+
+##### 1、MEMORY MANAGEMENT 所有可配置参数
+
+
+
+```shell
+# 建议必须设置：否则内存占满、造成服务器宕机
+# 建议 Redis 可以使用的内存量、一旦到达内存使用上限、Redis 将会试图移除内部数据
+# 移除规则可以通过 maxmemory-policy 来指定
+
+# 如果 Redis 无法根据移除规则来移除内存中的数据、或者设置了 '不允许移除'、那么 Redis 则会针对那些
+# 需要申请内存的指令返回错误信息、比如 SET、LPUSH 指令等
+
+# 但是对于无内存申请的指令、仍然会正常响应、例如：GET 等，如果你的 Redis 是主 Redis、那么在设置内
+# 存使用上限时，需要在系统中预留出一些内存给同步队列缓存、只有在你设置的是 '不移除' 的情况下，才不
+# 用考虑这个因素
+maxmemory <bytes>
+
+# maxmemory-policy 移除规则：
+# volatile-lru：使用 LRU 算法移除 key、只对设置了过期时间的键; (最近最少使用的 key)
+# allkeys-lru：在所有集合 key 中、使用 LRU 算法移除 key
+# volatile-random：在过期集合中移除随机的 key、只对设置了过期时间的键
+# allkeys-random：在所有集合 key 中、移除随机的 key
+# volatile-ttl：移除那些 TTL 值最小的 key、即那些最近要过期的 key
+# noeviction：不进行移除、针对写操作、只是返回错误信息
+maxmemory-policy noeviction
+
+# 设置样本数量、LRU 算法和最小 TTL 算法都并非是精确的算法，而且是估算值，所以你可以设置样本的大小
+# Redis 默认会检测这么多个 key 并选择其中 LRU的哪个
+# 一般设置 3 到 7 的数字、数值越小样本约不准确、但性能消耗越小
+maxmemory-samples 5
+
+# 如果有异常大的写流量，这个值可能需要增加\减少这个值可能会减少延迟
+# 0 = 最小延迟
+# 10 = 默认
+# 100 = 进程
+# 不考虑延迟
+maxmemory-eviction-tenacity 10
+
+# 暂无介绍、后续补
+replica-ignore-maxmemory yes
+
+# Redis 回收过期的密钥相关配置
+active-expire-effort 1
+```
+
+
+
+##### 2、MEMORY MANAGEMENT 原配置如下
+
+
+
+```shell
+############################## MEMORY MANAGEMENT ################################
+
+# Set a memory usage limit to the specified amount of bytes.
+# When the memory limit is reached Redis will try to remove keys
+# according to the eviction policy selected (see maxmemory-policy).
+#
+# If Redis can't remove keys according to the policy, or if the policy is
+# set to 'noeviction', Redis will start to reply with errors to commands
+# that would use more memory, like SET, LPUSH, and so on, and will continue
+# to reply to read-only commands like GET.
+#
+# This option is usually useful when using Redis as an LRU or LFU cache, or to
+# set a hard memory limit for an instance (using the 'noeviction' policy).
+#
+# WARNING: If you have replicas attached to an instance with maxmemory on,
+# the size of the output buffers needed to feed the replicas are subtracted
+# from the used memory count, so that network problems / resyncs will
+# not trigger a loop where keys are evicted, and in turn the output
+# buffer of replicas is full with DELs of keys evicted triggering the deletion
+# of more keys, and so forth until the database is completely emptied.
+#
+# In short... if you have replicas attached it is suggested that you set a lower
+# limit for maxmemory so that there is some free RAM on the system for replica
+# output buffers (but this is not needed if the policy is 'noeviction').
+#
+# maxmemory <bytes>
+
+# MAXMEMORY POLICY: how Redis will select what to remove when maxmemory
+# is reached. You can select one from the following behaviors:
+#
+# volatile-lru -> Evict using approximated LRU, only keys with an expire set.
+# allkeys-lru -> Evict any key using approximated LRU.
+# volatile-lfu -> Evict using approximated LFU, only keys with an expire set.
+# allkeys-lfu -> Evict any key using approximated LFU.
+# volatile-random -> Remove a random key having an expire set.
+# allkeys-random -> Remove a random key, any key.
+# volatile-ttl -> Remove the key with the nearest expire time (minor TTL)
+# noeviction -> Don't evict anything, just return an error on write operations.
+#
+# LRU means Least Recently Used
+# LFU means Least Frequently Used
+#
+# Both LRU, LFU and volatile-ttl are implemented using approximated
+# randomized algorithms.
+#
+# Note: with any of the above policies, when there are no suitable keys for
+# eviction, Redis will return an error on write operations that require
+# more memory. These are usually commands that create new keys, add data or
+# modify existing keys. A few examples are: SET, INCR, HSET, LPUSH, SUNIONSTORE,
+# SORT (due to the STORE argument), and EXEC (if the transaction includes any
+# command that requires memory).
+#
+# The default is:
+#
+# maxmemory-policy noeviction
+
+# LRU, LFU and minimal TTL algorithms are not precise algorithms but approximated
+# algorithms (in order to save memory), so you can tune it for speed or
+# accuracy. By default Redis will check five keys and pick the one that was
+# used least recently, you can change the sample size using the following
+# configuration directive.
+#
+# The default of 5 produces good enough results. 10 Approximates very closely
+# true LRU but costs more CPU. 3 is faster but not very accurate.
+#
+# maxmemory-samples 5
+
+# Eviction processing is designed to function well with the default setting.
+# If there is an unusually large amount of write traffic, this value may need to
+# be increased.  Decreasing this value may reduce latency at the risk of 
+# eviction processing effectiveness
+#   0 = minimum latency, 10 = default, 100 = process without regard to latency
+#
+# maxmemory-eviction-tenacity 10
+
+# Starting from Redis 5, by default a replica will ignore its maxmemory setting
+# (unless it is promoted to master after a failover or manually). It means
+# that the eviction of keys will be just handled by the master, sending the
+# DEL commands to the replica as keys evict in the master side.
+#
+# This behavior ensures that masters and replicas stay consistent, and is usually
+# what you want, however if your replica is writable, or you want the replica
+# to have a different memory setting, and you are sure all the writes performed
+# to the replica are idempotent, then you may change this default (but be sure
+# to understand what you are doing).
+#
+# Note that since the replica by default does not evict, it may end using more
+# memory than the one set via maxmemory (there are certain buffers that may
+# be larger on the replica, or data structures may sometimes take more memory
+# and so forth). So make sure you monitor your replicas and make sure they
+# have enough memory to never hit a real out-of-memory condition before the
+# master hits the configured maxmemory setting.
+#
+# replica-ignore-maxmemory yes
+
+# Redis reclaims expired keys in two ways: upon access when those keys are
+# found to be expired, and also in background, in what is called the
+# "active expire key". The key space is slowly and interactively scanned
+# looking for expired keys to reclaim, so that it is possible to free memory
+# of keys that are expired and will never be accessed again in a short time.
+#
+# The default effort of the expire cycle will try to avoid having more than
+# ten percent of expired keys still in memory, and will try to avoid consuming
+# more than 25% of total memory and to add latency to the system. However
+# it is possible to increase the expire "effort" that is normally set to
+# "1", to a greater value, up to the value "10". At its maximum value the
+# system will use more CPU, longer cycles (and technically may introduce
+# more latency), and will tolerate less already expired keys still present
+# in the system. It's a tradeoff between memory, CPU and latency.
+#
+# active-expire-effort 1
+```
+
+
+
+### 2、Redis 之 Jedis 案例
+
+
+
+#### 1、Jedis 操作-测试
+
+
+
+#### 2、Jedis 案例 - 模拟验证码发送
+
+
+
+## 7、Redis 发布和订阅
+
+
+
+### 1、发布和订阅介绍
+
+
+
+#### 1、什么是发布订阅？
+
+
+
+Redis 发布订阅 (pub/sub) 是一种消息通信模式：发送者 (pub) 发送消息、订阅者 (sub) 接收消息，Redis 客户端可以订阅任意数量的频道、如下图所示
+
+-   当 发布者给 频道2 发送消息 hello 时，消息就会发送给订阅了频道2的客户端：A、B
+
+![image-20210702192857894](Redis.assets/image-20210702192857894.png)
 
 
 
 
-## 6、Redis 之配置文件详解
+
+### 2、Redis 发布订阅命令实现
 
 
 
+#### 1、发布订阅命令实现步骤
 
 
 
+##### 1、打开一个客户端 A 订阅 channel1
+
+
+
+>   subscribe channel1：订阅一个频道
+
+```shell
+Reading messages... (press Ctrl-C to quit)
+1) "subscribe"
+2) "channel1"
+3) (integer) 1
+```
+
+
+
+##### 2、打开另一个客户端 B、给 channel1 发布消息
+
+
+
+>   publish channel1 \<message>：向指定频道发送一条消息
+
+```shell
+127.0.0.1:6379> publish channel1 helloRedis
+(integer) 1
+```
+
+
+
+##### 3、打开客户端 A、可以看到已经接收消息
+
+
+
+-   注意：发布的消息没有持久化
+
+```shell
+Reading messages... (press Ctrl-C to quit)
+1) "subscribe"
+2) "channel1"
+3) (integer) 1
+
+# 下面已经接收到了消息
+1) "message"
+2) "channel1"
+3) "helloRedis"
+```
+
+
+
+## 8、SpringBoot 整合 Redis
 
 
 
