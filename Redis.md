@@ -2532,9 +2532,16 @@ zetSet 底层使用了两个数据结构
 
 **Bitmap 位图**：现代计算机用二进制 (位) 作为信息的基础单位，1 个字节等于 8 位，例如 “abc" 字符串是由 3 个字节组成，但实际在计算机存储时将其用二进制表示，“abc” 分别对应的 ASCII 码分别是 97、98、99，对应的二进制分别是 01100001、01100010 和 01100011。如下图
 
+![image-20210705192518863](Redis.assets/image-20210705192518863.png)
 
 
-![image-20210702201058203](Redis.assets/image-20210702201058203.png)
+
+合理地使用操作位能够有效地提高内存使用率和开发效率。Redis提供了 Bitmaps 这个“数据类型”可以实现对位的操作
+
+-   Bitmaps 本身不是一种数据类型，实际上它就是字符串( key-value ) 但是它可以对字符串的位进行操作
+-   Bitmaps 单独提供了一套命令，所以在 Redis 中使用 Bitmaps 和使用字符串的方法不太相同，可以把 Bitmaps 想象成一个以位为单位的数组，数组的每个单元只能存储 0 和 1，数组的下标在 Bitmaps 心中叫做偏移量
+
+![image-20210705104034224](Redis.assets/image-20210705104034224.png)
 
 
 
@@ -2542,11 +2549,219 @@ zetSet 底层使用了两个数据结构
 
 
 
+-   `setbit <key><offset><value>`  设置 Bitmaps 中某个偏移量的值 ( 0 或 1)
+-   -   偏移量从 0 开始
+
+-   `getbit <key><offset>`  获取 Bitmaps 中某个偏移量的值
+-   `bitcount <key>`  统计指定 key 中字符串被设置为 1 的 bit 数
+-   `bitcount <key> [start end]`  统计字符串从 start 到 end 字节组比特值为 1 的数量
+    -   注意：统计的是字节组 （1 byte = 8 bit）
+    -   -1 表示最后一位，而 -2 表示倒数第二位，Start、End 是指 bit 组的字节的下标数，二者皆包含
+
+-   `bitop and (or/not/xor) <destkey> [key]`    bitop 是一个复合操作、它可以做多个Bitmaps 的 and (交集)、or (并集)、not (非)、xor (异或) 操作并将结果保存在 destkey 中
+
+
+
 #### 3、Bitmaps 类型常用命令演示
 
 
 
-#### 4、Bitmaps 类型底层数据结构
+##### 1、setbit 设置 Bitmaps 中某个偏移量的值
+
+
+
+>   `setbit <key><offset><value>`  设置 Bitmaps 中某个偏移量的值 ( 0 或 1)
+>
+>   -   偏移量从 0 开始
+
+就拿每个独立用户是否访问过网站举例，可以存放在 Bitmaps 中，将访问的用户记做 1，没有访问的用户记作 0，用偏移量作为用户 ID、设置键的第 offset 个位的值 (从 0 算起)，假设现在有 20 个用户， userid = 1、6、11、15、19 的几个用户对网站进行了访问，那么当前 Bitmaps 初始化结果如图
+
+![image-20210705105731930](Redis.assets/image-20210705105731930.png)
+
+注意：很多应用的用户 id 以一个指定数字 （例如 10000） 开头，直接将用户 id 和 Bitmaps 的偏移量对应势必会造成一定的浪费，通常的做法是每次做 setbit 操作时将用户 id 减去这个指定的数字，**在第一次初始化 bitmaps 时，如果偏移量非常大，那么整个初始化过程执行比较慢，可能会造成 Redis 阻塞**
+
+
+
+-   我们设置一个 userid 的 key、并按照 1、6、11、15、19 的偏移量依次赋值为1
+
+```jade
+127.0.0.1:6379> setbit userid 1 1
+(integer) 0
+127.0.0.1:6379> setbit userid 6 1
+(integer) 0
+127.0.0.1:6379> setbit userid 11 1
+(integer) 0
+127.0.0.1:6379> setbit userid 15 1
+(integer) 0
+127.0.0.1:6379> setbit userid 19 1
+(integer) 0
+```
+
+
+
+##### 2、getbit 获取 Bitmaps 中某个偏移量的值
+
+
+
+>   `getbit <key><offset>`  获取 Bitmaps 中某个偏移量的值
+
+-   我们依次获取 offset 为 1、15、20 的值进行验证
+
+```jade
+127.0.0.1:6379> getbit userid 1
+(integer) 1
+127.0.0.1:6379> getbit userid 15
+(integer) 1
+127.0.0.1:6379> getbit userid 20
+(integer) 0
+```
+
+
+
+##### 3、bitcount key 统计指定 key 中字符串被设置为1的 bit 数
+
+
+
+>   `bitcount <key>`  统计指定 key 中字符串被设置为 1 的 bit 数
+
+-   我们统计 userid  中 bit 为 1 的数量、按理应该为 5
+
+```jade
+127.0.0.1:6379> bitcount userid
+(integer) 5
+```
+
+
+
+##### 4、bitcount  统计字符串从 start 到 end 字节组比特值为 1 的数量
+
+
+
+>   `bitcount <key> [start end]`  统计字符串从 start 到 end 字节组比特值为 1 的数量
+>
+>   -   注意：统计的是字节组（1 byte = 8 bit）
+>   -   -1 表示最后一位，而 -2 表示倒数第二位，start、end 是指 bit 组的字节的下标数，二者皆包含
+
+例如 key 为 userid 的 bitmaps 存了 5 个数据，图解如下：
+
+![image-20210705192005206](Redis.assets/image-20210705192005206.png)
+
+如上分析：我们可以得知大致开辟了 3 个字节组来存放 userid 中的数据，字节组的下标也是从 0 开始
+
+```java
+//byte[0]  byte[1]   byte[2]
+01000010  00010001  000010000
+```
+
+
+
+-   那么我们进行以下命令统计
+
+```java
+// 统计下标 1、2 字节组中 bit = 1 的个数、即 [ 00010001  000010000 ]  --> 3
+127.0.0.1:6379> bitcount userid 1 2
+(integer) 3
+```
+
+```java
+// 统计下标 2 字节数组中 bit = 1 的个数，即 [ 000010000 ] --> 1
+127.0.0.1:6379> bitcount userid 2 2
+(integer) 1
+```
+
+```java
+// 也就是统计所有字节组 bit = 1 的数量，即 [ 01000010  00010001  000010000 ] --> 5
+127.0.0.1:6379> bitcount userid 0 -1
+(integer) 5
+```
+
+**注意：Redis 的 setbit 设置或清除的是 bit 位，而 bitcount 计算的是 byte 位**
+
+
+
+##### 5、bitop 是一个复合操作
+
+
+
+>   `bitop and (or/not/xor) <destkey> [key]`    bitop 是一个复合操作、它可以做多个Bitmaps 的 and (交集)、or (并集)、not (非)、xor (异或) 操作并将结果保存在 destkey 中
+
+
+
+我们设想一个场景：我们要统计 2020-11-03 和 2020-11-04 两天的用户都活跃的情况，那我们以日期 users:日期 为 key，用户的 id 为偏移量，比如用户 ID 为 1000 的用户 2020-11-03 登录了网站，那么我们可以这样设置：
+
+```java
+//设置为 1 表示 ID 为 1000 用户在 20201103 登录了网站
+setbit active_users:20201103 1000 1
+```
+
+
+
+**接下来我们正式开始测试**
+
+-   假如 2020-11-03 日、 ID 分别为 0、1、4、9 的用户登录了网站
+
+```jade
+127.0.0.1:6379> setbit active:users:20201103 0 1
+(integer) 0
+127.0.0.1:6379> setbit active:users:20201103 1 1
+(integer) 0
+127.0.0.1:6379> setbit active:users:20201103 4 1
+(integer) 0
+127.0.0.1:6379> setbit active:users:20201103 9 1
+(integer) 0
+```
+
+-   假如 2020-11-04 日、 ID 分别为 1、2、5、9 的用户登录了网站
+
+```jade
+127.0.0.1:6379> setbit active:users:20201104 1 1
+(integer) 0
+127.0.0.1:6379> setbit active:users:20201104 2 1
+(integer) 0
+127.0.0.1:6379> setbit active:users:20201104 5 1
+(integer) 0
+127.0.0.1:6379> setbit active:users:20201104 9 1
+(integer) 0
+```
+
+-   计算出这两天都访问过网站的用户数量 (也就是求交集)
+
+```java
+bitop and unique:active:users:20201103_04 active:users:20201103 active:users:20201104
+(integer) 2
+```
+
+如下图所示
+
+![image-20210705200313317](Redis.assets/image-20210705200313317.png)
+
+
+
+#### 4、Bitmaps 类型 与 Set 类型对比
+
+
+
+假设网站有 1 亿用户，每天独立访问的用户有 5 千万，如果每天用 Set 集合类型 和 Bitmaps 分别存储活跃用户可以得到表，那么 Set 和 Bitmaps 存储一天活跃用户对比如下：
+
+| 数据类型    | 每个用户 id 占用空间 | 需要存储的用户量 | 全部内存量                         |
+| ----------- | -------------------- | ---------------- | ---------------------------------- |
+| Set集合类型 | 64 位                | 5 千万           | 64 位 * 5 千万 = 400 MB            |
+| Bitmaps     | 1 位                 | 1 亿             | 1 位 * 1 亿 = 12.5 MB (缩小了32倍) |
+
+
+
+很明显、这种情况下使用 Bitmaps 能节省很多的内存空间，尤其是随着时间推移节省的内存还是非常可观的，但是 Bitmaps 并不是万金油，我们来分析以下案例
+
+假如该网站每天的独立访问用户很少，例如只有 10 万用户访问 (总用户依然 5 千万)，那么两者的对比如下所示，很显然，这时候使用 Bitmaps 就不太合适了，因为基本上大部分位都是 0、那么此时 Set 和 Bitmaps 存储一天活跃用户对比 (独立用户较少) 如下
+
+| 数据类型    | 每个用户 id 占用空间 | 需要存储的用户量 | 全部内存量            |
+| ----------- | -------------------- | ---------------- | --------------------- |
+| Set集合类型 | 64 位                | 10 万            | 64 位 * 10 万 = 800KB |
+| Bitmaps     | 1 位                 | 1 亿             | 1 位 * 1 亿 = 12.5 MB |
+
+>   解析：因为 Set集合可以只存储每天活跃的用户量就可以了，而 Bitmaps 则需要提前开辟能存储下5千万用户的 bit 信息
+>
+>   Bitmap 数据结构的 Java 代码实现参考笔记 Data Structure
 
 
 
@@ -2558,7 +2773,31 @@ zetSet 底层使用了两个数据结构
 
 
 
+在实际工作当中，我们经常会遇到与统计相关的功能需求，比如统计网站 PV (PageView) 页面访问量，可以使用 Redis 的 incr、incrby 轻松实现，但是像 UV (UniqueVisitor) 独立访客 (同一用户访问网站多次，只记录一次)，独立 IP 数、搜索记录数等需要去重和计数的问题如何解决？这种集合中不重复元素个数的问题称为基数问题
+
+>   什么是基数？
+
+比如数据集 {1、3、5、7、5、7、8}，那么这个数据集的基数集为 { 1、3、5、7、8 }，基数 (去重后的集合元素个数) 为 5，基数估计就是在误差可接受的范围内，快速计算基数。
+
+解决基数问题有很多种方案：
+
+-   数据存储在 MySQL 表中，使用 distinct count 计算不重复个数
+-   使用 Redis 提供的 hash、set、bitmaps 等数据结构来处理
+
+以上的方案结果精确，但随着数据不断增加，导致占用的空间越来越大，对于非常大的数据集是不切实际的，能否降低一定的精度来平衡存储空间？Redis 推出了 HyperLogLog类型，这种类型是用来做基数统计的算法，HyperLogLog 的优点是，在输入元素的数量或者体积非常非常大时，计算基数所需的空间总是固定的，并且是很小的
+
+在 Redis 里面，每个 HyperLogLog 键只需要花费 12 KB 内存，就可以计算接近 2^64 个不同元素的基数。这和计算基数时，元素越多耗费内存就越多的集合形成鲜明对比。但是，因为 HyperLogLog 只会根据输入元素来计算基数，而不会储存输入元素本身，所以 HyperLogLog 不能像集合那样，返回输入的各个元素。
+
+
+
 #### 2、HyperLogLog 类型常用命令
+
+
+
+-   `pfadd <key><element> [element...]`  添加单个或多个元素到 HyperLogLog 中
+-   `pfcount <key> [key...]`  计算单个或多个Key 的 HLL 的近似基数
+    -   比如用 HLL 存储每天的 UV，计算一周的 UV 可以使用 7 天的 UV 合并计算
+-   `pfmerge <destkey><sourcekey> [sourcekey...]`  将单个或多个 HLL 合并后的结果存储在另一个 HLL 中
 
 
 
@@ -2566,7 +2805,69 @@ zetSet 底层使用了两个数据结构
 
 
 
+##### 1、pfadd 添加单个或多个元素到 HyperLogLog 中
+
+
+
+>   `pfadd <key><element> [element...]`  添加单个或多个元素到 HyperLogLog 中
+
+```jade
+127.0.0.1:6379> pfadd language "java" "c++" "c" "c#" "java"
+(integer) 1
+```
+
+
+
+##### 2、pfcount 计算单个或多个 Key 的 HLL 的近似基数
+
+
+
+>   `pfcount <key> [key...]`  计算单个或多个Key 的 HLL 的近似基数
+>
+>   -   比如用 HLL 存储每天的 UV，计算一周的 UV 可以使用 7 天的 UV 合并计算
+
+```jade
+127.0.0.1:6379> pfcount language
+(integer) 4
+```
+
+
+
+##### 3、pfmerge 将单个或多个 HLL 合并后的结果存储在另一个 HLL 中
+
+
+
+>   `pfmerge <destkey><sourcekey> [sourcekey...]`  将单个或多个 HLL 合并后的结果存储在另一个 HLL 中
+
+-   我们在添加一个 key
+
+```jade
+127.0.0.1:6379> pfadd language2 "php"
+(integer) 1
+127.0.0.1:6379> pfadd language2 "javascript"
+(integer) 1
+127.0.0.1:6379> pfcount language2
+(integer) 2
+```
+
+-   合并两个 key
+
+```jade
+127.0.0.1:6379> pfmerge merge:language language language2
+OK
+127.0.0.1:6379> pfcount merge:language
+(integer) 6
+```
+
+
+
 #### 4、HyperLogLog 类型底层数据结构
+
+
+
+>   参考：
+>
+>   Redis 源码中 HyperLogLog 结构的实现原理是什么？ - 张戎的回答 - 知乎 https://www.zhihu.com/question/53416615/answer/1227317241
 
 
 
@@ -2578,7 +2879,23 @@ zetSet 底层使用了两个数据结构
 
 
 
+Redis 3.2 中增加了对 GEO 类型的支持。GEO ( Geospatial )，地理信息的缩写。该类型就是元素的 2 维坐标，在地图上就就是经纬度，Redis 基于该类型，提供了经纬度设置，查询，范围查询，距离查询，经纬度 Hash 等常见操作。这些数据将会存储到 Sorted Set 这样的目的是为了方便使用 GEORADIUS 或者 GEORADIUSBYMEMBER 命令对数据进行半径查询等操作
+
+Sorted Set 使用一种称为 Geohash 的技术进行填充。经度和纬度的位是交错的，以形成一个独特的 52 位整数. 我们知道，一个 Sorted Set 的 Double Score 可以代表一个 52 位的整数，而不会失去精度。这种格式允许半径查询检查的 1 + 8 个领域需要覆盖整个半径，并丢弃元素以外的半径。通过计算该区域的范围，通过计算所涵盖的范围，从不太重要的部分的排序集的得分，并计算得分范围为每个区域的 Sorted Set 中的查询
+
+
+
 #### 2、Geospatial 类型常用命令
+
+
+
+-   `geoadd <key><longitude><latitude><member> [longitude latitude member...]`
+    -   添加单个或多个地理位置 (经度、维度、名称)
+-   `geopos <key><member> [member...]`  获取单个或多个指定地区的坐标值
+-   `geodist <key><member1><member2> [m|km|ft|mi]`  获取两个位置之间的直线距离
+    -   m：米 [默认值]  |  km：千米  |  ft：英尺  |  mi：英里 
+-   `georadius <key><longitude><latitude>radius [m|km|ft|mi]`
+    -   以给定的经纬度为中心找出某一半径内的元素
 
 
 
@@ -2586,7 +2903,89 @@ zetSet 底层使用了两个数据结构
 
 
 
-#### 4、Geospatial 类型底层数据结构
+##### 1、geoadd 添加单个或多个地理位置 (经度、维度、名称)
+
+
+
+>   -   `geoadd <key><longitude><latitude><member> [longitude latitude member...]`
+>       -   添加单个或多个地理位置 (经度、维度、名称)
+
+下面我们来进行演示：
+
+-   上海的经纬度：121.47  31.23  shanghai
+-   重庆的经纬度：106.50  29.53  chongqing
+-   深圳的经纬度：114.05 22.52  shenzhen
+-   北京的经纬度：116.38 39.90  beijing
+
+```jade
+127.0.0.1:6379> geoadd china:city 121.47 31.23 shanghai
+(integer) 1
+127.0.0.1:6379> geoadd china:city 106.50 29.53 chongqing
+(integer) 1
+127.0.0.1:6379> geoadd china:city 114.05 22.52 shenzhen
+(integer) 1
+127.0.0.1:6379> geoadd china:city 116.38 39.90 beijing
+(integer) 1
+```
+
+注意：两极无法直接添加，一般会下载城市数据，直接通过 Java 程序一次性写入
+
+-   有效的经度范围 [ -180° ~ 180° ]
+-   有效的纬度范围 [ -85.05112878° ~ 85.05112878° ]
+
+当坐标位置超出指定范围时，该命令将会返回一个错误，已经添加的数据，是无法再次往里面添加的
+
+
+
+##### 2、geopos  获取单个或多个指定地区的坐标值
+
+
+
+>   `geopos <key><member> [member...]`  获取单个或多个指定地区的坐标值
+
+```jade
+127.0.0.1:6379> geopos china:city shanghai
+1) 1) "121.47000163793563843"
+   2) "31.22999903975783553"
+```
+
+
+
+##### 3、geodist 获取两个位置之间的直线距离
+
+
+
+>   `geodist <key><member1><member2> [m|km|ft|mi]`  获取两个位置之间的直线距离
+>
+>   -   m：米 [默认值]  |  km：千米  |  mi：英里  |  ft：英尺
+
+-   我们获取以下上海和重庆的距离
+
+```jade
+127.0.0.1:6379> geodist china:city shanghai chongqing
+"1447673.6920"
+
+127.0.0.1:6379> geodist china:city shanghai chongqing km
+"1447.6737"
+```
+
+
+
+##### 4、georadius 以给定的经纬度为中心找出某一半径内的元素
+
+
+
+>   `georadius <key><longitude><latitude>radius [m|km|ft|mi]`
+>
+>   -   以给定的经纬度为中心找出某一半径内的元素
+
+-   找出经纬度为 110 30 附近 1000 km 之内的城市
+
+```jade
+127.0.0.1:6379> georadius china:city 110 30 1000 km
+1) "chongqing"
+2) "shenzhen"
+```
 
 
 
@@ -3422,6 +3821,46 @@ active-expire-effort 1
 
 
 #### 1、Jedis 操作-测试
+
+
+
+##### 1、Jedis 介绍
+
+
+
+>   之前我们在 Java 中用 JDBC 来操作数据库，那么现在，我们同样在 Java 中用 Jedis 来操作 Redis
+
+
+
+##### 2、Jedis 环境搭建
+
+
+
+##### 3、Jedis 之基本环境 ping 测试
+
+
+
+##### 4、Jedis 之操作 String 类型
+
+
+
+##### 5、Jedis 之操作 List 类型
+
+
+
+##### 6、Jedis 之操作 Set 类型
+
+
+
+##### 7、Jedis 之操作 Hash 类型
+
+
+
+##### 8、Jedis 之操作 ZSet 类型
+
+
+
+
 
 
 
