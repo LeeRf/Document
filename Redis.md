@@ -1607,7 +1607,7 @@ OK
 
 **List 的数据结构为快速链表 QuickList**，首先在列表元素较少的情况下会使用一块连续的内存存储，这个结构是 ziplist、也即是压缩列表，他将所有的元素挨着一起存储，分配的是一块连续的内存
 
-当数据量比较多的时候才会改成 QucikList，因为普通的链表需要的附加指针空间太大，会比较浪费空间，比如这个列表里存储的是 int 类型数据，结构上还需要两个额外的指针 prev 和 next.
+当数据量比较多的时候才会改成 QuickList，因为普通的链表需要的附加指针空间太大，会比较浪费空间，比如这个列表里存储的是 int 类型数据，结构上还需要两个额外的指针 prev 和 next.
 
 ![image-20210702095142348](Redis.assets/image-20210702095142348.png)
 
@@ -3836,7 +3836,74 @@ active-expire-effort 1
 
 
 
+###### 1、创建一个新的 Maven 项目 Redis-Jedis
+
+###### 2、导入以下 Maven 依赖
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+    <version>2.5.0</version>
+</dependency>
+
+<dependency>
+    <groupId>junit</groupId>
+    <artifactId>junit</artifactId>
+    <version>4.12</version>
+    <scope>test</scope>
+</dependency>
+
+<!-- Jedis 包 -->
+<dependency>
+    <groupId>redis.clients</groupId>
+    <artifactId>jedis</artifactId>
+    <version>3.6.1</version>
+</dependency>
+```
+
+
+
 ##### 3、Jedis 之基本环境 ping 测试
+
+
+
+###### 1、我们编写以下测试代码
+
+
+
+-   测试是否可以连接 Redis 服务器
+
+```java
+@Test
+public void testRedisConnection(){
+
+    Jedis jedis = new Jedis("192.168.1.166", 6379);
+    /**
+     * ping() ：测试 Redis 服务器是否可以连接
+     */
+    String pingResult = jedis.ping();
+    System.out.println(pingResult);
+}
+```
+
+-   输出如下代表成功
+
+```java
+"C:\Program Files\Java\jdk1.8.0_271\bin\java.exe" -ea -Didea.test.cyclic.buffer.size=1048576 "-javaagent:D:\MySoft\Intellij IDEA\IntelliJ IDEA 2020.1.2\lib\idea_rt.jar=52201:D:\MySoft\Intellij IDEA\IntelliJ IDEA 2020.1.2\bin" -Dfile.encoding=UTF-8 -classpath "D:\MySoft\Intellij IDEA\IntelliJ IDEA 2020.1.2\lib\idea_rt.jar;D:\MySoft\Intellij IDEA\IntelliJ IDEA 2020.1.2\plugins\junit\lib\junit5-rt.jar;D:\MySoft\Intellij IDEA\IntelliJ IDEA 2020.1.2\plugins\junit\lib\junit-rt.jar;C:\Program Files\Java\jdk1.8.0_271\jre\lib\charsets.jar;C:\Program Files\Java\jdk1.8.0_271\jre\lib\deploy.jar;C:\Program Files\Java\jdk1.8.0_271\jre\lib\ext\access-bridge-64.jar;C:\Program Files\Java\jdk1.8.0_271\jre\lib\ext\cldrdata.jar;C:\Program Files\Java\jdk1.8.0_271\jre\lib\ext\dnsns.jar;C:\Program Files\Java\jdk1.8.0_271\jre\lib\ext\jaccess.jar;C:\Program Files\Java\jdk1.8.0_271\jre\lib\ext\jfxrt.jar;C:\Program Files\Java\jdk1.8.0_271\jre\lib\ext\localedata.jar;C:\Program Files\Java\jdk1.8.0_271\jre\lib\ext\nashorn.jar;C:\Program Files\Java\jdk1.8.0_271\jre\lib\ext\sunec.jar;C:\Program Files\Java\jdk1.8.0_271\jre\lib\ext\sunjce_provider.jar;C:\Program Files\Java\jdk1.8.0_271\jre\lib\ext\sunmscapi.jar;C:\Program Files\Java\jdk1.8.0_271\jre\lib\ext\sunpkcs11.jar;C:\Program Files\Java\jdk1.8.0_271\jre\lib\ext\zipfs.jar;C:\Program Files\Java\jdk1.8.0_271\jre\lib\javaws.jar;C:\Program Files\Java\jdk1.8.0_271\jre\lib\jce.jar;C:\Program Files\Java\jdk1.8.0_271\jre\lib\jfr.jar;C:\Program Files\Java\jdk1.8.0_271\jre\lib\jfxswt.jar;C:\Program Files\Java\jdk1.8.0_271\jre\lib\jsse.jar;C:\Program Files\Java\jdk1.8.0_271\jre\lib\management-agent.jar;C:\Program Files\Java\jdk1.8.0_271\jre\lib\plugin.jar;C:\Program Files\Java\jdk1.8.0_271\jre\lib\resources.jar;C:\Program Files\Java\jdk1.8.0_271\jre\lib\rt.jar;D:\Java\Redis-Jedis\target\test-classes;D:\Java\Redis-Jedis\target\classes;D:\Apache\repository\org\springframework\boot\spring-boot-starter-web\2.5.0\spring-boot-starter-web-2.5.0.jar;D:\Apache\repository\org\springframework\boot\spring-boot-starter\2.5.0\spring-boot-starter-2.5.0.jar;D:\Apache\repository\org\springframework\boot\spring-boot\2.5.0\spring-boot-2.5.0.jar;D:\Apache\repository\org\springframework\boot\spring-boot-autoconfigure\2.5.0\spring-boot-autoconfigure-2.5.0.jar;D:\Apache\repository\org\springframework\boot\spring-boot-starter-logging\2.5.0\spring-boot-starter-logging-2.5.0.jar;D:\Apache\repository\ch\qos\logback\logback-classic\1.2.3\logback-classic-1.2.3.jar;D:\Apache\repository\ch\qos\logback\logback-core\1.2.3\logback-core-1.2.3.jar;D:\Apache\repository\org\apache\logging\log4j\log4j-to-slf4j\2.14.1\log4j-to-slf4j-2.14.1.jar;D:\Apache\repository\org\apache\logging\log4j\log4j-api\2.14.1\log4j-api-2.14.1.jar;D:\Apache\repository\org\slf4j\jul-to-slf4j\1.7.30\jul-to-slf4j-1.7.30.jar;D:\Apache\repository\jakarta\annotation\jakarta.annotation-api\1.3.5\jakarta.annotation-api-1.3.5.jar;D:\Apache\repository\org\springframework\spring-core\5.3.7\spring-core-5.3.7.jar;D:\Apache\repository\org\springframework\spring-jcl\5.3.7\spring-jcl-5.3.7.jar;D:\Apache\repository\org\yaml\snakeyaml\1.28\snakeyaml-1.28.jar;D:\Apache\repository\org\springframework\boot\spring-boot-starter-json\2.5.0\spring-boot-starter-json-2.5.0.jar;D:\Apache\repository\com\fasterxml\jackson\core\jackson-databind\2.12.3\jackson-databind-2.12.3.jar;D:\Apache\repository\com\fasterxml\jackson\core\jackson-annotations\2.12.3\jackson-annotations-2.12.3.jar;D:\Apache\repository\com\fasterxml\jackson\core\jackson-core\2.12.3\jackson-core-2.12.3.jar;D:\Apache\repository\com\fasterxml\jackson\datatype\jackson-datatype-jdk8\2.12.3\jackson-datatype-jdk8-2.12.3.jar;D:\Apache\repository\com\fasterxml\jackson\datatype\jackson-datatype-jsr310\2.12.3\jackson-datatype-jsr310-2.12.3.jar;D:\Apache\repository\com\fasterxml\jackson\module\jackson-module-parameter-names\2.12.3\jackson-module-parameter-names-2.12.3.jar;D:\Apache\repository\org\springframework\boot\spring-boot-starter-tomcat\2.5.0\spring-boot-starter-tomcat-2.5.0.jar;D:\Apache\repository\org\apache\tomcat\embed\tomcat-embed-core\9.0.46\tomcat-embed-core-9.0.46.jar;D:\Apache\repository\org\apache\tomcat\embed\tomcat-embed-el\9.0.46\tomcat-embed-el-9.0.46.jar;D:\Apache\repository\org\apache\tomcat\embed\tomcat-embed-websocket\9.0.46\tomcat-embed-websocket-9.0.46.jar;D:\Apache\repository\org\springframework\spring-web\5.3.7\spring-web-5.3.7.jar;D:\Apache\repository\org\springframework\spring-beans\5.3.7\spring-beans-5.3.7.jar;D:\Apache\repository\org\springframework\spring-webmvc\5.3.7\spring-webmvc-5.3.7.jar;D:\Apache\repository\org\springframework\spring-aop\5.3.7\spring-aop-5.3.7.jar;D:\Apache\repository\org\springframework\spring-context\5.3.7\spring-context-5.3.7.jar;D:\Apache\repository\org\springframework\spring-expression\5.3.7\spring-expression-5.3.7.jar;D:\Apache\repository\junit\junit\4.12\junit-4.12.jar;D:\Apache\repository\org\hamcrest\hamcrest-core\1.3\hamcrest-core-1.3.jar;D:\Apache\repository\redis\clients\jedis\3.6.1\jedis-3.6.1.jar;D:\Apache\repository\org\slf4j\slf4j-api\1.7.30\slf4j-api-1.7.30.jar;D:\Apache\repository\org\apache\commons\commons-pool2\2.9.0\commons-pool2-2.9.0.jar" com.intellij.rt.junit.JUnitStarter -ideVersion5 -junit4 com.lee.redis.JedisTest,testRedisConnection
+PONG
+
+Process finished with exit code 0
+```
+
+
+
+###### 2、连接超时报错问题解决
+
+
+
+-   记得关闭 Linux 服务器端的防火墙
+-   修改 Redis 配置文件、注释掉 bind 栏配置并关闭 Redis 保护模式 protected-mode no
 
 
 
@@ -3844,7 +3911,56 @@ active-expire-effort 1
 
 
 
+```java
+@Test
+public void testRedisString(){
+
+    Jedis jedis = new Jedis(host, port);
+
+    // Jedis 设置 String 类型的值
+    jedis.set("name", "lee");
+    System.out.println(jedis.get("name"));
+
+    /**
+     * 设置 key 的过期时间
+     * jedis.expire("name", 1000);
+     */
+
+    /**
+     * 遍历所有 key
+     */
+    Set<String> keys = jedis.keys("*");
+    keys.forEach(key -> System.out.println(key));
+}
+```
+
+>   除此意外还有很多方法，这里不再阐述
+
+
+
 ##### 5、Jedis 之操作 List 类型
+
+
+
+```java
+@Test
+public void testRedisList(){
+
+    Jedis jedis = new Jedis(host, port);
+    jedis.lpush("listKey", "v1", "v2", "v3");
+
+    List<String> allValues = jedis.lrange("listKey", 0, -1);
+    allValues.forEach(val -> System.out.println(val));
+}
+```
+
+输出如下：
+
+```
+v3
+v2
+v1
+```
 
 
 
@@ -3852,7 +3968,59 @@ active-expire-effort 1
 
 
 
+```java
+@Test
+public void testRedisSet(){
+
+    Jedis jedis = new Jedis(host, port);
+    jedis.sadd("setKey","v1", "v2", "v3");
+
+    Set<String> setkey = jedis.smembers("setKey");
+    setkey.forEach(val -> System.out.println(val));
+}
+```
+
+-   输出如下
+
+```
+v1
+v2
+v3
+```
+
+
+
 ##### 7、Jedis 之操作 Hash 类型
+
+
+
+```java
+@Test
+public void testRedisHash(){
+
+    Jedis jedis = new Jedis(host, port);
+
+    Map<String, String> valueMap = new HashMap<>();
+    valueMap.put("id", "10000");
+    valueMap.put("name", "lee");
+    valueMap.put("age", "24");
+    valueMap.put("email", "123456@qq.com");
+
+    jedis.hset("zhangsan", valueMap);
+
+    Map<String, String> zhangsan = jedis.hgetAll("zhangsan");
+    zhangsan.forEach((k, v) -> System.out.println("key：" + k + "\t" + "value：" + v));
+}
+```
+
+-   输出如下
+
+```jade
+key：name	 value：lee
+key：age	     value：24
+key：email	 value：123456@qq.com
+key：id	     value：10000
+```
 
 
 
@@ -3860,11 +4028,184 @@ active-expire-effort 1
 
 
 
+```java
+@Test
+public void testRedisZSet(){
 
+    Jedis jedis = new Jedis(host, port);
+    jedis.zadd("语言排行榜", 100, "C#");
+    jedis.zadd("语言排行榜", 400, "C");
+    jedis.zadd("语言排行榜", 300, "C++");
+    jedis.zadd("语言排行榜", 200, "Java");
+
+    Set<String> language = jedis.zrange("语言排行榜", 0, -1);
+    language.forEach(val -> System.out.println(val));
+}
+```
+
+```
+C#
+Java
+C++
+C
+```
 
 
 
 #### 2、Jedis 案例 - 模拟验证码发送
+
+
+
+##### 1、案例分析：
+
+
+
+-   用户输入手机号、点击发送验证码后随机生成 6 位数字，2 分钟内有效
+-   输入验证码后，点击验证，返回验证成功与否
+-   每个手机号限制每天只能发送 3 次验证码
+
+代码关键步骤解析
+
+-   随机生成 6 位数字验证码 Random
+-   验证码 2 分内有效，Redis 设置过期时间 120 秒
+-   判断验证码是否一致，从 Redis 获取验证码和输入的验证码进行比较
+-   每个手机号每天只能发送 3 次、可以通过 incr 原子性操作记录该用户发送的次数 （并且要设置这个 key 过期时间为 1 天）
+
+
+
+##### 2、编写代码
+
+
+
+-   RedisKey 类
+
+```java
+public class RedisKey {
+    //手机号验证码 key
+    private static String phoneCodeKey = "verification:%s:code";
+    //手机号当天发送次数 key
+    private static String codeCountKey = "verification:%s:count";
+
+    public static String getPhoneCodeKey(String phoneNum) {
+        return String.format(phoneCodeKey, phoneNum);
+    }
+
+    public static String getCodeCountKey(String phoneNum) {
+        return String.format(codeCountKey, phoneNum);
+    }
+}
+```
+
+-   PhoneCode
+
+```java
+/**
+ * 模拟验证码
+ */
+public class PhoneCode {
+
+    private String testPhone = "15000890381";
+    private String testCode = "5816451010";
+
+    @Test
+    public void testSendPhoneCode(){
+        String result = sendPhoneCode(testPhone);
+        if(result != null && result.length() == 6){
+            System.out.println("本次发送的验证码：" + result);
+        }
+    }
+
+    @Test
+    public void testVerificationCode(){
+        
+        int flag = verificationCode(testPhone, testCode);
+        
+        if(flag == -1){
+            System.out.println("验证码验证失败：[验证码已经过期]");
+        }else if(flag == 0){
+            System.out.println("验证码验证失败：[验证码错误]");
+        }else{
+            System.out.println("验证码验证成功!");
+        }
+    }
+
+    /**
+     * 给指定手机号发送一条验证码
+     * @param phone
+     * @return
+     */
+    public String sendPhoneCode(String phone) {
+
+        //先进行验证该手机号是否达到今日最大发送次数
+        if (verificationCount(phone)) return null;
+
+        String randomCode = getPhoneCode(6);
+        String codeKey = RedisKey.getPhoneCodeKey(phone);
+        String countKey = RedisKey.getCodeCountKey(phone);
+
+        //设置 key 的同时设置过期时间
+        jedis.setex(codeKey, 120 ,randomCode);
+
+        if(jedis.get(countKey) == null){
+            jedis.setex(countKey, 60 * 60 * 24, "1");
+        }else{
+            //自增
+            jedis.incr(countKey);
+        }
+
+        return randomCode;
+    }
+
+    /**
+     * 验证该手机号今天是否达到限制次数
+     * @param phone
+     * @return
+     */
+    public boolean verificationCount(String phone){
+
+        String sendCount = jedis.get(RedisKey.getCodeCountKey(phone));
+
+        if(sendCount != null && Integer.parseInt(sendCount) >= 3){
+            System.out.println("[发送失败] -> 手机号 [" + phone + "] 今日已达最大发送次数");
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * 验证改手机号输入的验证码是否正确
+     * @param phone
+     * @param inputCode
+     * @return
+     */
+    public int verificationCode(String phone, String inputCode) {
+
+        String codeKey = RedisKey.getPhoneCodeKey(phone);
+        String codeValue = jedis.get(codeKey);
+
+        if (codeValue == null) return -1;
+        if (inputCode.equals(codeValue)) {
+            return 1;
+        }
+        return 0;
+    }
+
+    private final static String host = "192.168.1.166";
+    private final static Integer port = 6379;
+
+    public static Jedis jedis = new Jedis(host, port);
+    /**
+     * 生成指定位数的随机数
+     * @param len
+     * @return
+     */
+    public static String getPhoneCode(int len) {
+        int rs = (int) ((Math.random() * 9 + 1) * Math.pow(10, len - 1));
+        return String.valueOf(rs);
+    }
+}
+```
 
 
 
@@ -3950,3 +4291,841 @@ Reading messages... (press Ctrl-C to quit)
 
 
 
+### 1、新建项目并整合 Redis
+
+
+
+##### 1、创建一个 Spring 项目
+
+
+
+>   用 Spring Initializer 创建一个 SpringBoot-Redis 项目
+
+
+
+##### 2、导入以下 maven 依赖
+
+
+
+```xml
+<dependencies>
+    <!--StringBoot 整合 Redis-->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-data-redis</artifactId>
+        <version>2.5.2</version>
+    </dependency>
+    <!--Spring 2.X 集成 Redis 所需连接池部分 common-pool2-->
+    <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-pool2</artifactId>
+        <version>2.9.0</version>
+    </dependency>
+
+    <!-- Swagger 相关的包-->
+    <dependency>
+        <groupId>io.springfox</groupId>
+        <artifactId>springfox-swagger2</artifactId>
+        <version>2.9.2</version>
+    </dependency>
+    <dependency>
+        <groupId>io.springfox</groupId>
+        <artifactId>springfox-swagger-ui</artifactId>
+        <version>2.9.2</version>
+    </dependency>
+
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-test</artifactId>
+        <scope>test</scope>
+    </dependency>
+</dependencies>
+```
+
+
+
+##### 3、编写 yaml 配置
+
+
+
+```yaml
+server:
+  port: 8080
+
+spring:
+  profiles:
+    active: dev
+
+  redis:
+    host: 192.168.1.166
+    port: 6379
+    # Redis 数据库索引号 (默认 0)
+    database: 0
+    # 连接超时时间(毫秒) 3分钟
+    timeout: 1800000
+
+    # Redis 连接池相关配置
+    lettuce:
+      pool:
+        # 连接池最大连接数 (负数：没有限制)
+        max-active: 20
+        # 最大阻塞等待时间 (负数：没有限制)
+        max-wait: -1
+        # 连接池中的最大空闲连接
+        max-idle: 5
+        # 连接池中的最小空闲连接
+        min-idle: 0
+```
+
+
+
+##### 4、编写 config 配置类
+
+
+
+-   swagger 的配置类
+
+```java
+package com.lee.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
+import springfox.documentation.builders.RequestHandlerSelectors;
+import springfox.documentation.service.ApiInfo;
+import springfox.documentation.service.Contact;
+import springfox.documentation.spi.DocumentationType;
+import springfox.documentation.spring.web.plugins.Docket;
+import springfox.documentation.swagger2.annotations.EnableSwagger2;
+
+import java.util.ArrayList;
+
+/**
+ * 配置 Swagger
+ */
+@Configuration
+@EnableSwagger2 /* 开启Swagger2 */
+public class SwaggerConfig {
+
+    /**
+     * 配置 Swagger Docket 的 bean 实例
+     * @return
+     */
+    @Bean
+    public Docket docket(Environment environment) {
+
+        //设置要显示的 Swagger 环境
+        Profiles profiles = Profiles.of("dev", "test");
+        boolean enableFlag = environment.acceptsProfiles(profiles);
+
+        //apiInfo() 可以设置 Swagger 界面的描述
+        return new Docket(DocumentationType.SWAGGER_2)
+                .apiInfo(getApiInfo())
+                .enable(enableFlag)
+                .groupName("Lee")
+                .select()
+                .apis(RequestHandlerSelectors.basePackage("com.lee.controller"))
+                .build();
+    }
+
+    /* 设置多个分组 */
+    @Bean
+    public Docket docket1(){
+        return new Docket(DocumentationType.SWAGGER_2).groupName("RedisTemplate");
+    }
+
+    /**
+     * 配置 Swagger 的 描述信息
+     *
+     * @return
+     */
+    private ApiInfo getApiInfo() {
+        //配置作者信息
+        Contact contact = new Contact("Lee", "https://space.bilibili.com/486305074", "javaleerf@163.com");
+
+        return new ApiInfo(
+                "SpringBoot 整合 Redis 测试",
+                "Out of darkness comes light.",
+                "v1.0",
+                "https://space.bilibili.com/486305074",
+                contact,
+                "Apache 2.0",
+                "http://www.apache.org/licenses/LICENSE-2.0",
+                new ArrayList()
+        );
+    }
+}
+```
+
+-   redis 的配置类
+
+```java
+package com.lee.config;
+
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CachingConfigurerSupport;
+import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.cache.RedisCacheConfiguration;
+import org.springframework.data.redis.cache.RedisCacheManager;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializationContext;
+import org.springframework.data.redis.serializer.RedisSerializer;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
+
+import java.time.Duration;
+
+@EnableCaching
+@Configuration
+public class RedisConfig extends CachingConfigurerSupport {
+
+    @Bean
+    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory){
+
+        RedisTemplate<String, Object> template = new RedisTemplate<>();
+        RedisSerializer<String> redisSerializer = new StringRedisSerializer();
+        Jackson2JsonRedisSerializer jackson2JsonRedisSerializer = new Jackson2JsonRedisSerializer(Object.class);
+
+        ObjectMapper om = new ObjectMapper();
+        om.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
+        om.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL);
+        jackson2JsonRedisSerializer.setObjectMapper(om);
+        template.setConnectionFactory(factory);
+
+        template.setConnectionFactory(factory);
+        // key 序列化的方式
+        template.setKeySerializer(redisSerializer);
+        // value 序列化的方式
+        template.setValueSerializer(jackson2JsonRedisSerializer);
+        // value hashmap 序列化
+        template.setHashValueSerializer(jackson2JsonRedisSerializer);
+
+        return template;
+    }
+
+    @Bean
+    public CacheManager cacheManager(RedisConnectionFactory factory) {
+
+        RedisSerializer<String> redisSerializer = new StringRedisSerializer();
+        Jackson2JsonRedisSerializer jackson2JsonRedisSerializer = new Jackson2JsonRedisSerializer(Object.class);
+
+        //解决查询缓存转换异常问题
+        ObjectMapper om = new ObjectMapper();
+        om.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
+        om.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL);
+        jackson2JsonRedisSerializer.setObjectMapper(om);
+
+        //配置序列化 (解决乱码的问题)，过期时间 600 秒
+        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
+                .entryTtl(Duration.ofSeconds(600))
+                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer((redisSerializer)))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jackson2JsonRedisSerializer))
+                .disableCachingNullValues();
+
+        RedisCacheManager cacheManager = RedisCacheManager.builder(factory)
+                .cacheDefaults(config).build();
+
+        return cacheManager;
+    }
+}
+```
+
+
+
+##### 5、编写 RedisController 的代码
+
+
+
+说明：
+
+-   Redis 操作 String 类型的对应 RedisTemplate.opsForValue()
+-   Redis 操作 List 类型的对应 RedisTemplate.opsForList()
+-   Redis 操作 Set 类型的对应 RedisTemplate.opsForSet()
+-   Redis 操作 Hash 类型的对应 RedisTemplate.opsForHash()
+-   Redis 操作 ZSet 类型的对应 RedisTemplate.opsForZSet()
+
+```java
+package com.lee.controller;
+
+import com.lee.entities.CommonResult;
+import io.swagger.annotations.ApiOperation;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Set;
+
+@RestController
+@RequestMapping("/redis")
+@ApiOperation("Redis 整合测试")
+public class RedisController {
+
+    @Autowired
+    private RedisTemplate redisTemplate;
+
+    // ************ String
+
+    @PostMapping("/addString/{key}/{value}")
+    public CommonResult<String> addString(@PathVariable("key") String key, @PathVariable("value") String value){
+
+        redisTemplate.opsForValue().set(key, value);
+        return new CommonResult<>(200, "插入 String k -> [ " + key + " ] v -> [ " + value + " ] 成功");
+    }
+
+    @GetMapping("getString/{key}")
+    public CommonResult<Object> getString(@PathVariable("key") String key){
+        Object value = redisTemplate.opsForValue().get(key);
+        return new CommonResult<>(200, "获取成功", value);
+    }
+
+    // ************ List
+
+    @PostMapping("/addList/{key}/{value}")
+    public CommonResult<String> addList(@PathVariable("key") String key, @PathVariable("value") String value){
+
+        Long result = redisTemplate.opsForList().rightPush(key, value);
+        return new CommonResult<>(200, "新增 List k -> [ " + key + " ] v -> [ " + value + " ] 成功 \n + Result：" + result);
+    }
+
+    @GetMapping("getListAll/{key}")
+    public CommonResult<Object> getList(@PathVariable("key") String key){
+        List range = redisTemplate.opsForList().range(key, 0, -1);
+        return new CommonResult<>(200, "获取成功", range);
+    }
+
+    // ************ Set
+
+    @PostMapping("/addSet/{key}/{value}")
+    public CommonResult<String> addSet(@PathVariable("key") String key, @PathVariable("value") String value){
+
+        Long result = redisTemplate.opsForSet().add(key, value);
+        return new CommonResult<>(200, "新增 List k -> [ " + key + " ] v -> [ " + value + " ] 成功 \n + Result：" + result);
+    }
+
+    @GetMapping("getSetAll/{key}")
+    public CommonResult<Object> getSetAll(@PathVariable("key") String key){
+        Set members = redisTemplate.opsForSet().members(key);
+        return new CommonResult<>(200, "获取成功", members);
+    }
+
+    // ************ Hash
+
+    @PostMapping("/addHash/{key}/{field}/{value}")
+    public CommonResult<String> addHash(@PathVariable("key") String key, @PathVariable("field") String field,@PathVariable("value") String value){
+        redisTemplate.opsForHash().put(key, field, value);
+        return new CommonResult<>(200, "新增 List k -> [ " + key + " ] v -> [ " + value + " ] 成功");
+    }
+
+    @GetMapping("getHashAll/{key}")
+    public CommonResult<Object> getHashAll(@PathVariable("key") String key){
+        List values = redisTemplate.opsForHash().values(key);
+        return new CommonResult<>(200, "获取成功", values);
+    }
+
+
+    // ************ ZSet
+
+    @PostMapping("/addZSet/{key}/{value}/{score}")
+    public CommonResult<String> addZSet(@PathVariable("key") String key, @PathVariable("value") String value, @PathVariable("score") Double score){
+        boolean result = redisTemplate.opsForZSet().add(key, value, score);
+        return new CommonResult<>(200, "新增 List k -> [ " + key + " ] v -> [ " + value + " ] 成功 \n + Result：" + result);
+    }
+
+    @GetMapping("getZSetAll/{key}")
+    public CommonResult<Object> getZSetAll(@PathVariable("key") String key){
+        Set range = redisTemplate.opsForZSet().range(key, 0, -1);
+        return new CommonResult<>(200, "获取成功", range);
+    }
+}
+```
+
+
+
+##### 6、启动即可进行测试
+
+
+
+![image-20210709180730844](Redis.assets/image-20210709180730844.png)
+
+
+
+## 9、Redis 事务和锁机制
+
+
+
+### 1、Redis 中自带的事务
+
+
+
+#### 1、Redis 事务的介绍
+
+
+
+Redis 事务是一个单独的隔离操作：事务中的所有命令都会序列化、**按顺序地执行**，事务在执行的过程中，不会被其他客户端发来的命令请求所打断，**Redis 事务的主要作用就是 串联多个命令 防止别的命令插队**、如下图所示
+
+![image-20210712160202012](Redis.assets/image-20210712160202012.png)
+
+
+
+#### 2、Redis 事务的基本命令
+
+
+
+>   **Multi、Exec、Discard 三个基本命令**
+>
+>   -   Multi：在 Redis 中的开启一个事务
+>   -   Exec：在 Redis 中的执行一个事务
+>   -   Discard：如果中途不需要了可以放弃这个事务
+
+从输入 Multi 命令开始、输入的命令都会依次进入命令队列中，但不会执行，知道输入 Exec 后，Redis 会将之前的命令队列中的命令依次执行，组队的过程中可以通过 discard 来放弃组队
+
+![image-20210712162522482](Redis.assets/image-20210712162522482.png)
+
+#### 3、Redis 事务命令演示
+
+
+
+##### 1、multi 命令先开启一个事务
+
+
+
+-   我们发现现在我们 set 的时候返回了 QUEUED，而不开启事务通常返回 1 或者 0
+
+```jade
+127.0.0.1:6379> multi
+OK
+127.0.0.1:6379(TX)> set key1 value1
+QUEUED
+127.0.0.1:6379(TX)> set key2 value2
+QUEUED
+127.0.0.1:6379(TX)> set key3 value3
+QUEUED
+```
+
+
+
+##### 2、exec 命令开始执行事务
+
+
+
+-   我们发现有三条命令就返回三个 OK，代表执行成功
+
+```jade
+127.0.0.1:6379(TX)> exec
+1) OK
+2) OK
+3) OK
+```
+
+
+
+##### 3、discard 命令放弃事务
+
+
+
+```java
+127.0.0.1:6379> multi  // 先开启事务
+OK
+127.0.0.1:6379(TX)> set k1 v1  // 设置两条待执行命令
+QUEUED
+127.0.0.1:6379(TX)> set k2 v2
+QUEUED
+127.0.0.1:6379(TX)> discard  // 弃用事务
+OK
+```
+
+
+
+#### 4、Redis 事务异常情况分析
+
+
+
+##### 1、组队时发生异常
+
+
+
+>   如果组队过程中某个命令出现了报告错误，执行时队列中所有的命令都会被取消
+
+![image-20210712163939425](Redis.assets/image-20210712163939425.png)
+
+-   下面进行演示，下列就是开启一个事务，并设置三个命令，第三个命令是错误的，因为没有设置 value 值
+
+```jade
+127.0.0.1:6379> multi
+OK
+127.0.0.1:6379(TX)> set k11 v11
+QUEUED
+127.0.0.1:6379(TX)> set k22 v22
+QUEUED
+127.0.0.1:6379(TX)> set k33
+(error) ERR wrong number of arguments for 'set' command
+```
+
+-   此时我们使用 exce 来执行事务，发生报错
+
+```asciiarmor
+127.0.0.1:6379(TX)> exec
+(error) EXECABORT Transaction discarded because of previous errors.
+```
+
+
+
+##### 2、执行时发生异常
+
+
+
+>   假如组队阶段没有异常，但是执行阶段某个命令报告了错误，**则只有报错的命令不会被执行，而其他的命令都会执行，不会回滚**
+
+![image-20210712164154873](Redis.assets/image-20210712164154873.png)
+
+
+
+-   下面进行演示，下列就是开启一个事务，并设置三个命令
+-   第一条命令设置一个 key 为 k10、value 值为 v10 的数
+-   第二条命令要对 key 为 k10 的值进行自增 (自增只能适用于 num 类型)，但是在此阶段不会报错
+
+```jade
+127.0.0.1:6379> multi
+OK
+127.0.0.1:6379(TX)> set k10 v10
+QUEUED
+127.0.0.1:6379(TX)> incr k10
+QUEUED
+127.0.0.1:6379(TX)> set k15 v15
+QUEUED
+```
+
+-   然后我们执行事务，发现除了第二条命令错误外，其他命令都顺利执行成功
+
+```jade
+127.0.0.1:6379(TX)> exec
+1) OK
+2) (error) ERR value is not an integer or out of range
+3) OK
+```
+
+
+
+#### 5、Redis 事务冲突问题
+
+
+
+##### 1、我们来模拟一个场景
+
+
+
+假如有一个场景：有很多人有你的银行账户、总共 10000 块钱。**他们都用你的账户同时去参加双十一抢购活动**
+
+-   第一个请求想给金额减 8000 块
+-   第二个请求想给金额减 5000 块
+-   第三个请求想给金额减 1000 块
+
+下图为三个请求同时操作 (并发场景)，如下图，余额成了 -4000
+
+-   三个请求同时请求 Redis，都返回账户余额 1 万块钱
+-   第一个请求先减去 8000 剩 2000
+-   第二个请求用 2000 减去 5000 块钱，剩 -3000
+-   第三个请求用 -3000 减去 1000 块钱，剩 -4000
+
+这就叫做事务冲突问题，解决这个问题需要用到锁
+
+![image-20210712174131326](Redis.assets/image-20210712174131326.png)
+
+
+
+##### 2、悲观锁 (Pessimistic Lock)
+
+
+
+顾名思义，就是很悲观，每次去拿数据的时候都认为别人会修改，所以每次在拿数据的时候都会上锁，这样别人想拿这个数据就会 block(阻塞) 直到它拿到锁，传**统的关系型数据库里面就是用到了很多这种锁机制，比如行锁、表锁等、读锁、写锁等，都是在操作之前先上锁**
+
+![image-20210712174145182](Redis.assets/image-20210712174145182.png)
+
+
+
+##### 3、乐观锁 (Optimistic Lock)
+
+
+
+顾名思义，就是很乐观，每次去拿数据的时候都认为别人不会修改，所以不会上锁，但是在更新的时候会判读以下在此期间别人有没有更新这个数据，可以使用版本号等机制实现。**乐观锁适用于多读的应用类型，这样可以提高吞吐量。Redis 就是利用这种 check-and-set 机制实现事务的**
+
+![image-20210712183739239](Redis.assets/image-20210712183739239.png)
+
+
+
+##### 4、Redis 中的 watch 命令
+
+
+
+>   `watch key [key...]` 在执行 multi 之前，先执行 watch key [key...] 命令，可以监视一个(或多个) key，**如果在事务执行之前这个 (或这些) key 被其他命令所改动，那么事务将被打断**
+
+
+
+-   我们 Set 一个 key 叫做  balance、之后打开两个 Redis 客户端
+
+```jade
+127.0.0.1:6379> set balance 100
+OK
+```
+
+-   之后我们在第一个客户端 使用 watch 监听 balance
+
+```jade
+127.0.0.1:6379> watch balance
+OK
+```
+
+-   第二个客户端同上
+
+```jade
+127.0.0.1:6379> watch balance
+OK
+```
+
+-   之后我们对第一个客户端开启一个事务
+
+```jade
+127.0.0.1:6379> multi
+OK
+127.0.0.1:6379(TX)> incrby balance 10
+QUEUED
+```
+
+-   之后我们在对第二个客户端开启一个事务
+
+```jade
+127.0.0.1:6379> multi
+OK
+127.0.0.1:6379(TX)> incrby balance 20
+QUEUED
+```
+
+-   第一个客户端提交事务
+
+```jade
+127.0.0.1:6379(TX)> exec
+1) (integer) 110
+```
+
+-   此时第二个客户端提交事务时无操作 （因为第一个客户端已经对 balance 做了修改，版本号发生改变，而第二个客户端再去修改的时候版本号不一致）
+
+```jade
+127.0.0.1:6379(TX)> exec
+(nil)
+```
+
+
+
+
+
+##### 5、Redis 中的 unwatch 命令
+
+
+
+>   `unwatch key [key...]`  取消 watch 命令对所有 key 的监视
+>
+>   -   如果在执行 watch 命令之后，exec 命令或 Discard 命令先被执行了的话，那么就不需要在执行 unwatch 了
+
+
+
+#### 6、Redis 事务的三个特性
+
+
+
+>   单独的隔离操作
+
+-   事务中的所有命令都会序列化放入到 Queue 中按照顺序执行，事务在执行的过程中，不会被其他客户端发送来的命令请求所打断
+
+>   没有隔离界别的概念
+
+-   队列中的命令没有提交之前都不会实际被执行，因为事务提交前任何指令都不会被实际执行
+
+>   不保证原子性
+
+-   事务中如果有一条命令执行失败，其后的命令仍然会被执行，没有回滚
+
+
+
+### 2、Redis 秒杀案例基本实现
+
+
+
+#### 1、秒杀案例介绍
+
+
+
+
+
+
+
+![image-20210712195900290](Redis.assets/image-20210712195900290.png)
+
+
+
+
+
+## 10、Redis 实现分布式锁
+
+
+
+## 11、Redis 持久化 RDB 和 AOF
+
+
+
+**Redis为了保证效率，数据缓存在内存中，Redis 会周期性的把更新的数据写入磁盘或者把修改操作写入追加的记录文件，以保证数据的持久化。**
+
+Redis是一个支持持久化的内存数据库，可以将内存中的数据同步到磁盘保证持久化。
+
+**Redis的持久化策略**：2种
+
+- RDB：快照形式是直接把内存中的数据保存到一个 dump 文件中，定时保存，保存策略。
+- AOF：把所有的对Redis的服务器进行修改的命令都存到一个文件里，命令的集合。 Redis默认是快照RDB的持久化方式
+
+当 Redis 重启时，它会优先使用 AOF 文件来还原数据集，因为 AOF 文件保存的数据集通常比 RDB 文件所保存的数据集更完整。你甚至可以关闭持久化功能，让数据只在服务器运行时存
+
+
+
+### 1、Redis 之 RDB
+
+
+
+**默认 Redis 是会以快照 “RDB” 的形式将数据持久化到磁盘的，一个二进 制文件，dump.rdb**
+
+工作原理简单介绍一下：当 Redis 需要做持久化时，Redis 会 fork 一个子进程，子进程将数据写到磁盘上一个临时 RDB 文件中。当子进程完成写临时文件后，将原来的 RDB 替换掉，这样的好处就是可以 copy-on-write。
+
+Redis默认情况下，是快照 RDB 的持久化方式，将内存中的数据以快照的方式写入二进制文件中，默认的文件名是 dump.rdb 。当然我们也可以手动执行 save 或者 bgsave（异步）做快照。
+
+Redis.conf配置 ：默认是如下配置
+
+```
+复制代码save 900 1 
+save 300 10
+save 60 10000
+```
+
+- 900秒之内，如果超过1个key被修改，则发起快照保存；
+- 300秒内，如果超过10个key被修改，则发起快照保存；
+- 1分钟之内，如果1万个key被修改，则发起快照保存；
+
+> **RDB** 优点：与 AOF 相比，恢复大数据集✁时候会更快，它适合大规模✁数据恢复场景，如备份，全量复制等
+>
+> **缺点**：没办法做到实时持久化/秒级持久化
+
+
+
+### 2、Redis 之 AOF
+
+
+
+使用 AOF 做持久化，每一个写命令都通过write函数追加到 appendonly.aof 中,配置方式：启动 AOF 持久化的方式
+
+Redis.conf配置
+
+```bash
+bash复制代码appendfsync yes   
+appendfsync always     #每次有数据修改发生时都会写入AOF文件。
+appendfsync everysec   #每秒钟同步一次，该策略为AOF的缺省策略。
+```
+
+AOF 就可以做到全程持久化，只需要在配置文件中开启（默认是no），appendonly yes开启 AOF 之后，Redis 每执行一个修改数据的命令，都会把它添加到 AOF 文件中，当 Redis 重启时，将会读取 AOF 文件进行“重放”以恢复到 Redis 关闭前的最后时刻
+
+
+
+### 3、两者该用哪一个？
+
+
+
+> 如果数据不能丢失，RDB 和 AOF 混用
+>
+> 如果只作为缓存使用，可以承受几分钟✁数据丢失✁话，可以只使用 RDB。
+>
+> 如果只使用 AOF，优先使用 everysec ✁写回策略
+
+如果你非常关心你的数据,但仍然可以承受数分钟以内的数据丢失， 那么你可以只使用 RDB 持久。 AOF 将 Redis 执行的每一条命令追加到磁盘中，处理巨大的写入会降低 Redis 的性能，不知道你是否可以接受。 数据库备份和灾难恢复：定时生成 RDB 快照（snapshot）非常便于进行数据库备份， 并且 RDB 恢复数据集的速度也要比 AOF 恢复的速度要快
+
+
+
+## 13、Redis 怎么实现高可用
+
+
+
+> 我们在项目中使用 Redis，肯定不会是单点部署 Redis 服务✁。因为，单点部署一旦宕机，就不可用了。为了实现高可用，通常✁做法是，将数据库复制多个副本以部署在不同✁服务器上，其中一台挂了也可以继续提供服务。 Redis 实现高可用有三种部署模式：
+>
+> **主从模式，哨兵模式，集群模式**。
+
+> 面试官经常会问到 Redis ✁高可用。Redis 高可用回答包括两个层面，一个就是**数据不能丢失，或者说尽量减少丢失**;另外一个就是保证 **Redis 服务不中断**。 对于尽量减少数据丢失，可以通过 AOF 和 RDB 保证。对于保证服务不中断✁话，Redis 就不能单点部署，这时候我们先看下 Redis 主从
+
+
+
+### 1、Redis 主从模式
+
+
+
+Redis 主从模式，就是部署多台 Redis 服务器，有主库和从库，它们之间通过主从复制，以保证数据副本✁一致。主从库之间采用✁是**读写分离**✁方式，其中主库负责读操作和写操作，从库则负责读操作。如果 Redis 主库挂了，需要人工切换其中的从库成为主库
+
+
+
+### 2、Redis 哨兵模式
+
+
+
+> 主从模式中，一旦主节点由于故障不能提供服务，需要人工将从节点晋升为主节点，同时还要通知应用方更新主节点地址。显然，多数业务场景都不能接受. 这种故障处理方式。Redis 从 2.8 开始正式提供了 **Redis 哨兵机制**来解决这个问题。
+
+哨兵其实是一个运行在特殊模式下✁ Redis 进程。它有三个作用，分别是：
+
+**监控、自动选主切换（简称选主）、通知**。
+
+哨兵进程在运行期间，监视所有✁ Redis 主节点和从节点。它通过周期性给**主从库**发送 PING命令，检测主从库是否挂了。如果**从库**没有在规定时间内响应哨兵 PING命令，哨兵就会把它标记为**下线状态**；如果主库没有在规定时间内响应哨兵PING命令，哨兵则会判定主库下线，然后开始切换到**选主**任务。所谓**选主**，其实就是从多个从库中，按照一定规则，选出一个当做主库。至于**通知**呢，就是选出主库后，哨兵把新主库的连接信息发给其他从库，让它们和新主库建立主从关系。同时，哨兵也会把新主库的连接信息通知给客户端，让它们把请求操作发到新主库上。
+
+
+
+### 3、Redis 集群模式
+
+
+
+> 哨兵模式基于主从模式，实现读写分离，它还可以自动切换，系统可用性更高。但是它每个节点存储的数据是一样的，浪费内存，并且**不好在线扩容**。因此，**Reids Cluster 集群（切片集群**的实现方案）**应运而生，它在 Redis3.0 加入的，实现了 Redis 的**分布式存储。对数据进行分片，也就是说每台 Redis 节点上存储不同的内容，来解决在线扩容的问题。并且，它可以保存大量数据，即分散数据到各个 Redis 实例，还提供复制和故障转移的功能
+
+
+
+## 14、Redis 分布式问题解决方案
+
+
+
+### 1、Redis 之缓存穿透
+
+
+
+### 2、Redis 之缓存击穿
+
+
+
+### 3、Redis 之缓存雪崩
+
+
+
+### 4、Redis 之分布式锁 - 设置锁和过期时间
+
+
+
+### 5、Redis 之分布式锁 - UUID 防止误删
+
+
+
+### 6、Redis 之分布式锁 - LUA 保证原子性删除
+
+
+
+## 15、[完结篇] Redis 6 新功能回顾

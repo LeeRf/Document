@@ -1047,3 +1047,64 @@ ssh-keygen
 
 
 提交测试
+
+
+
+## 15、问题小结
+
+
+
+### 1、仓库所有权不一致
+
+
+
+在仓库中执行命令发现：
+
+```ABAP
+$ git status
+fatal: detected dubious ownership in repository at 'D:/Lee Desktop/自充电/A.职业规划/Typora笔记/编程笔记'
+'D:/Lee Desktop/自充电/A.职业规划/Typora笔记/编程笔记' is owned by:
+        (inconvertible) (S-1-5-21-1174384493-531365004-4013033039-1001)
+but the current user is:
+        LEE/19365 (S-1-5-21-2668775846-3239520567-97696781-1001)
+To add an exception for this directory, call:
+
+        git config --global --add safe.directory 'D:/Lee Desktop/自充电/A.职业规划/Typora笔记/编程笔记'
+
+
+git 换了 ssh 密钥，导致 git 仓库提交出现用户不一致
+```
+
+> 这个错误的根本原因是，你当前操作 Git 的 Windows 用户，与当初创建这个仓库的 Windows 用户，不是同一个。Git 检测到这个“所有权不匹配”的情况后，为了安全起见，就拒绝执行命令并给出了提示
+
+
+
+#### **方案一：添加目录例外（最推荐，最安全）**
+
+直接运行 Git 提示给你的命令，把这个特定的仓库目录添加到 Git 的“安全目录”列表中，告诉 Git“这个目录我信得过，请放行”
+
+```less
+git config --global --add safe.directory 'D:/Lee Desktop/自充电/A.职业规划/Typora笔记/编程笔记'
+```
+
+- **优点**：操作简单，精准解决问题，不影响其他仓库的安全检查
+- **适用场景**：大部分情况的首选方案
+
+
+
+#### **方案二：修改文件夹所有者**
+
+如果你希望从根本上解决这个问题，可以把文件夹的所有权改回当前用户。可以打开 **命令提示符 (CMD)** 或 **PowerShell**（建议以管理员身份运行），然后执行以下命令：
+
+```less
+# 1. 夺取文件夹所有权
+takeown /f "D:/Lee Desktop/自充电/A.职业规划/Typora笔记/编程笔记" /r /d y
+
+# 2. 为当前用户赋予完全控制权
+icacls "D:/Lee Desktop/自充电/A.职业规划/Typora笔记/编程笔记" /grant 19365:F /t
+```
+
+> 请将命令中的 `19365` 替换为你当前实际的用户名（也就是报错信息里 "current user is" 后面的那个名字）
+
+- **优点**：一劳永逸，符合 Linux/Unix 风格的系统权限管理习惯
+- **适用场景**：你希望修复文件系统权限的场合
